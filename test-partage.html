@@ -136,7 +136,7 @@ async function api(path,accessToken,options={}){
    ...(options.body?{'Content-Type':'application/json'}:{}),...options.headers}
  });
  if(!response.ok)throw Error(String(response.status));
- return response.json();
+ return response.status===204?null:response.json();
 }
 const dossiersPath='/rest/v1/parenthese_test_dossiers?id=eq.1';
 async function loadShared(accessToken){
@@ -182,10 +182,59 @@ function scale(n,l,a,required=false){return '<fieldset><legend>'+esc(l)+'</legen
 function groups(records,prefix,labels,per,levels){return labels.map((l,g)=>'<details '+(g===0?'open':'')+'><summary>'+l+'</summary>'+records.slice(g*per,(g+1)*per).map((item,i)=>Array.isArray(item)?'<small>'+esc(item[1])+'</small>'+scale(prefix+(g*per+i),item[0],levels):scale(prefix+(g*per+i),item,levels)).join('')+'</details>').join('')}
 function form(id,fn){document.getElementById(id).onsubmit=e=>{e.preventDefault();return fn(Object.fromEntries(new FormData(e.target)),e.target)}}
 function button(label,action,primary=false){return '<button type="button" data-action="'+action+'" '+(primary?'class="primary"':'')+'>'+label+'</button>'}
+function passwordSetup(accessToken){
+ app.innerHTML='<section class="card narrow"><h1>Choisir un mot de passe</h1><form id="passwordSetup">'+
+  '<label>Nouveau mot de passe<input type="password" name="password" minlength="12" autocomplete="new-password" required></label>'+
+  '<label>Confirmer le mot de passe<input type="password" name="confirmation" minlength="12" autocomplete="new-password" required></label>'+
+  '<p class="muted">Au moins 12 caractères.</p><p id="setupError" role="alert"></p>'+
+  '<button class="primary">Enregistrer le mot de passe</button></form></section>';
+ form('passwordSetup',async(v,f)=>{
+  const error=document.getElementById('setupError'),submit=f.querySelector('button');
+  if(submit.disabled)return;
+  if(v.password.length<12||v.password!==v.confirmation){error.textContent='Les deux mots de passe doivent être identiques et contenir au moins 12 caractères.';return}
+  submit.disabled=true;
+  error.textContent='';
+  try{
+   await api('/auth/v1/user',accessToken,{method:'PUT',body:JSON.stringify({password:v.password})});
+  }catch(e){
+   error.textContent=e.message==='401'?'Ce lien a expiré. Demandez un nouveau lien depuis la page de connexion.':'Mot de passe refusé. Essayez un autre mot de passe ou demandez un nouveau lien.';
+   return;
+  }finally{submit.disabled=false}
+  try{await api('/auth/v1/logout?scope=global',accessToken,{method:'POST'})}
+  catch{render();document.getElementById('codeError').textContent='Mot de passe enregistré. Connectez-vous avec le nouveau mot de passe.';return}
+  render();
+  document.getElementById('codeError').textContent='Mot de passe enregistré. Vous pouvez vous connecter.';
+ });
+}
+function initialScreen(){
+ const fragment=new URLSearchParams(location.hash.slice(1));
+ const type=fragment.get('type');
+ const accessToken=fragment.get('access_token');
+ if(accessToken||fragment.has('error')||fragment.has('refresh_token')){
+  history.replaceState(null,'',location.pathname);
+ }
+ if(accessToken&&(type==='invite'||type==='recovery')){passwordSetup(accessToken);return}
+ render();
+ if(fragment.has('error'))document.getElementById('codeError').textContent='Le lien est expiré ou déjà utilisé. Demandez un nouveau lien.';
+}
 function teacherLogin(){
  app.innerHTML='<section class="hero"><div class="hero-copy"><h1>La Parenthèse</h1><p class="notice">Test de l’espace partagé. Utilisez uniquement des dossiers et des pièces fictifs.</p><form id="adultForm">'+
   input('author','Nom de l’intervenant','text','',true)+input('email','Adresse du compte','email','',true)+
-  '<label>Mot de passe<input name="password" type="password" autocomplete="current-password" required></label><p id="codeError" role="alert"></p><button class="primary">Accéder aux dossiers</button></form></div><div class="hero-art" aria-hidden="true"><span>( )</span></div></section>';
+  '<label>Mot de passe<input name="password" type="password" autocomplete="current-password" required></label><p id="codeError" role="alert"></p><button class="primary">Accéder aux dossiers</button><button type="button" id="recoverPassword">Créer ou réinitialiser mon mot de passe</button></form></div><div class="hero-art" aria-hidden="true"><span>( )</span></div></section>';
+ const recovery=document.getElementById('recoverPassword');
+ recovery.onclick=async()=>{
+  const address=document.getElementById('adultForm').elements.email;
+  if(!address.reportValidity())return;
+  const message=document.getElementById('codeError');
+  recovery.disabled=true;
+  try{
+   await api('/auth/v1/recover?redirect_to='+encodeURIComponent(location.origin+location.pathname),null,{
+    method:'POST',body:JSON.stringify({email:address.value.trim()})
+   });
+   message.textContent='Si le compte existe et peut recevoir le message, un nouveau lien vous sera envoyé.';
+  }catch{message.textContent='Le lien n’a pas pu être envoyé. Demandez à l’administrateur de vérifier la configuration e-mail.'}
+  finally{recovery.disabled=false}
+ };
  form('adultForm',async(v,f)=>{
   const error=document.getElementById('codeError'), submit=f.querySelector('button');
   if(!v.author.trim()){error.textContent='Renseignez le nom de l’intervenant.';return}
@@ -545,5 +594,5 @@ else if(action==='prev'||action==='next')period=shift(period,action==='prev'?-7:
 else tab=action;
 render();
 }
-render();
+initialScreen();
 </script></html>
