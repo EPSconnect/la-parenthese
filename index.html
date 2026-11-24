@@ -204,7 +204,7 @@ session.innerHTML=adult?esc(adult)+' '+button('Se déconnecter','switch'):'';
 if(!adult){teacherLogin();return}
 const s=state.students.find(x=>x.id===selected);
 if(!s){dashboard();return}
-app.innerHTML=button('← Dossiers','home')+'<section class="profile"><p class="tag">'+esc(s.group)+(s.module?' · Module '+esc(s.module):'')+'</p><h1>'+esc(s.name)+'</h1><p class="muted">'+esc(s.classe)+' · Du '+fmt(s.start)+' au '+fmt(s.end)+'</p>'+button('Supprimer le dossier','deleteStudent')+'</section><nav>'+[['observations','Observations'],['semaine','Synthèse de semaine'],['bilans','Bilans'],['evolution','Évolution'],['exports','Documents PDF']].map(([k,l])=>'<button type="button" data-action="'+k+'" aria-current="'+(tab===k)+'">'+l+'</button>').join('')+'</nav><div id="panel"></div>';
+app.innerHTML=button('← Dossiers','home')+'<section class="profile"><p class="tag">'+esc(s.group)+(s.module?' · Module '+esc(s.module):'')+'</p><h1>'+esc(s.name)+'</h1><p class="muted">'+esc(s.classe)+' · Du '+fmt(s.start)+' au '+fmt(s.end)+'</p>'+'<div class="actions">'+button('Télécharger le dossier (PDF)','pdf:all',true)+button('Supprimer le dossier','deleteStudent')+'</div>'+'</section><nav>'+[['observations','Observations'],['semaine','Synthèse de semaine'],['bilans','Bilans'],['evolution','Évolution'],['exports','Documents PDF']].map(([k,l])=>'<button type="button" data-action="'+k+'" aria-current="'+(tab===k)+'">'+l+'</button>').join('')+'</nav><div id="panel"></div>';
 ({observations, semaine, bilans, evolution, exports:pdfExports})[tab](s,document.querySelector('#panel'));
 if(savedMessage){
  document.querySelector('#panel').insertAdjacentHTML('afterbegin','<p class="notice" role="status">'+esc(savedMessage)+'</p>');
@@ -251,6 +251,8 @@ function validBackup(data){
   Array.isArray(s.obs)&&s.obs.every(o=>flat(o)&&date(o.date))&&
   Array.isArray(s.reviews)&&s.reviews.every(r=>flat(r)&&date(r.date)&&['Entrée','Intermédiaire','Sortie'].includes(r.kind)&&
    Object.keys(r).every(k=>!/^([yp])\d+$/.test(k)||Number(k.slice(1))<(k[0]==='y'?young.length:pro.length)))&&
+  (!s.history||(record(s.history)&&typeof s.history.notes==='string'&&(!s.history.date||date(s.history.date))&&
+   Array.isArray(s.history.files)&&s.history.files.every(f=>record(f)&&typeof f.name==='string'&&typeof f.url==='string'&&archiveUrl.test(f.url))))&&
   record(s.weeks)&&Object.entries(s.weeks).every(([k,w])=>date(k)&&flat(w))&&
   (!s.entryDraft||(record(s.entryDraft)&&Object.entries(s.entryDraft).every(([k,v])=>k==='step'?Number.isInteger(v):typeof v==='string')))
  );
@@ -264,11 +266,77 @@ function downloadBackup(){
  link.click();
  setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
+const archiveUrl=/^data:(?:application\/pdf|image\/(?:jpeg|png|webp));base64,[A-Za-z0-9+/]+={0,2}$/;
+async function readArchiveFile(file){
+ let source=file;
+ if(/^image\/(jpeg|png|webp|heic|heif)$/.test(file.type)||/\.(jpe?g|png|webp|heic|heif)$/i.test(file.name)){
+  const photo=await createImageBitmap(file);
+  try{
+   const scale=Math.min(1,1700/Math.max(photo.width,photo.height));
+   const canvas=document.createElement('canvas');
+   canvas.width=Math.max(1,Math.round(photo.width*scale));
+   canvas.height=Math.max(1,Math.round(photo.height*scale));
+   const context=canvas.getContext('2d');
+   context.fillStyle='#fff';
+   context.fillRect(0,0,canvas.width,canvas.height);
+   context.drawImage(photo,0,0,canvas.width,canvas.height);
+   source=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.82));
+  }finally{photo.close()}
+ }else{
+  const header=await file.slice(0,5).text();
+  if(header!=='%PDF-')throw Error('Format non pris en charge.');
+  source=new Blob([file],{type:'application/pdf'});
+ }
+ if(!source||source.size>1500000)throw Error('Pièce trop volumineuse.');
+ const url=await new Promise((resolve,reject)=>{
+  const reader=new FileReader();
+  reader.onload=()=>resolve(reader.result);
+  reader.onerror=()=>reject(reader.error);
+  reader.readAsDataURL(source);
+ });
+ if(!archiveUrl.test(url))throw Error('Fichier non reconnu.');
+ return {name:source.type==='image/jpeg'?file.name.replace(/\.[^.]+$/,'')+'.jpg':file.name,url};
+}
+function historySection(s,print=false){
+ const history=s.history;
+ if(!history||!(history.notes||history.date||history.files.length))return '';
+ const attachments=history.files.map(f=>'<li>'+(print?esc(f.name):'<a href="'+esc(f.url)+'" download="'+esc(f.name)+'">'+esc(f.name)+'</a>')+'</li>').join('');
+ return '<section class="card"><h2>Ancien dossier</h2>'+(history.date?'<p>Repère du '+fmt(history.date)+'</p>':'')+
+  (history.notes?'<p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(history.notes)+'</p>':'')+
+  (attachments?'<h3>Pièces jointes</h3><ul>'+attachments+'</ul>':'')+'</section>';
+}
 function newStudent(){
-document.querySelector('#new').innerHTML='<form id="studentForm" class="card"><h2>Ajouter un élève</h2><p class="muted">Dossiers enregistrés dans ce navigateur. Utilisez un code élève sur un appareil partagé.</p><div class="grid">'+input('name','Nom et prénom ou code élève','text','',true)+input('classe','Classe','text','',true)+select('group','Groupe',['Parcours','Respiration'],true)+'<div id="module" hidden>'+select('module','Module',['1','2','3','4'])+'</div>'+input('start','Entrée','date',today(),true)+input('end','Sortie prévue','date')+input('ref','Référent')+'</div>'+area('schedule','Rythme et emploi du temps aménagé')+'<button class="primary">Créer le dossier</button></form>';
+document.querySelector('#new').innerHTML='<form id="studentForm" class="card"><h2>Ajouter un élève</h2><p class="muted">Dossiers enregistrés dans ce navigateur. Utilisez un code élève sur un appareil partagé.</p><div class="grid">'+input('name','Nom et prénom ou code élève','text','',true)+input('classe','Classe','text','',true)+select('group','Groupe',['Parcours','Respiration'],true)+'<div id="module" hidden>'+select('module','Module',['1','2','3','4'])+'</div>'+input('start','Entrée','date',today(),true)+input('end','Sortie prévue','date')+input('ref','Référent')+'</div>'+area('schedule','Rythme et emploi du temps aménagé')+'<fieldset><legend>Ancien dossier (facultatif)</legend><label>Scans et photos<input type="file" id="archiveFiles" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif" multiple></label><p class="muted">Sélectionnez plusieurs fichiers d’un coup. Les photos sont compressées et les pièces restent dans ce navigateur.</p>'+input('historyDate','Date du repère','date')+area('historyNotes','Points de départ à comparer avec les prochains bilans')+'<p id="archiveError" role="alert"></p></fieldset><button class="primary">Créer le dossier</button></form>';
 const f=document.querySelector('#studentForm');
 f.elements.group.onchange=()=>{const r=f.elements.group.value==='Respiration';document.querySelector('#module').hidden=!r;f.elements.module.required=r;f.elements.end.required=r};
-form('studentForm',v=>{if(!v.name.trim()||!v.classe.trim()||(v.end&&v.end<v.start)){alert('Vérifiez le nom, la classe et les dates.');return}if(v.group==='Respiration'&&(v.end<shift(v.start,27)||v.end>shift(v.start,42))){alert('Choisissez une période de 4 à 6 semaines.');return}if(v.group==='Parcours')v.module='';const id=String(Date.now())+'-'+Math.random().toString(36).slice(2);state.students.push({...v,name:v.name.trim(),classe:v.classe.trim(),id,obs:[],reviews:[],weeks:{}});if(!save()){state.students.pop();return}filter='Tous';selected=id;tab='bilans';render();app.scrollIntoView()});
+form('studentForm',async(v,f)=>{
+ if(!v.name.trim()||!v.classe.trim()||(v.end&&v.end<v.start)){alert('Vérifiez le nom, la classe et les dates.');return}
+ if(v.group==='Respiration'&&(v.end<shift(v.start,27)||v.end>shift(v.start,42))){alert('Choisissez une période de 4 à 6 semaines.');return}
+ if(v.group==='Parcours')v.module='';
+ const submit=f.querySelector('button[type=submit],button.primary');
+ if(submit.disabled)return;
+ const error=f.querySelector('#archiveError');
+ error.textContent='';
+ submit.disabled=true;
+ const files=[];
+ try{
+  for(const file of f.querySelector('#archiveFiles').files){
+   try{files.push(await readArchiveFile(file))}
+   catch(e){error.textContent=file.name+' : '+(e.message||'fichier illisible.')+' Essayez un JPEG ou un PDF allégé.';return}
+  }
+  if(files.reduce((size,file)=>size+file.url.length,0)>2700000){
+   error.textContent='Les pièces dépassent la capacité prévue pour un dossier. Réduisez la taille des scans ou joignez moins de fichiers.';
+   return;
+  }
+  if(!f.isConnected||!adult)return;
+  const {historyDate,historyNotes,...fields}=v;
+  const id=String(Date.now())+'-'+Math.random().toString(36).slice(2);
+  const history={date:historyDate,notes:historyNotes.trim(),files};
+  state.students.push({...fields,name:v.name.trim(),classe:v.classe.trim(),id,history,obs:[],reviews:[],weeks:{}});
+  if(!save()){state.students.pop();return}
+  filter='Tous';selected=id;tab='bilans';render();app.scrollIntoView();
+ }finally{submit.disabled=false}
+});
 }
 function observations(s,p){
 const index=observationEdit;
@@ -430,7 +498,7 @@ function printDossier(s,section){
  };
  const sections=section==='all'?Object.keys(exportSections):[section];
  const report=document.querySelector('#pdfReport');
- report.innerHTML='<h1>La Parenthèse</h1><h2>'+esc(s.name)+'</h2><p>'+esc(s.classe)+' · '+esc(s.group)+(s.module?' · Module '+esc(s.module):'')+'</p><p>Entrée le '+fmt(s.start)+(s.end?' · Fin prévue le '+fmt(s.end):'')+(s.ref?' · Référent : '+esc(s.ref):'')+'</p>'+(s.schedule?'<p>Rythme d’accueil : '+esc(s.schedule)+'</p>':'')+sections.map(k=>'<section><h2>'+exportSections[k]+'</h2>'+(parts[k]()||'<p>Aucune saisie enregistrée.</p>')+'</section>').join('');
+ report.innerHTML='<h1>La Parenthèse</h1><h2>'+esc(s.name)+'</h2><p>'+esc(s.classe)+' · '+esc(s.group)+(s.module?' · Module '+esc(s.module):'')+'</p><p>Entrée le '+fmt(s.start)+(s.end?' · Fin prévue le '+fmt(s.end):'')+(s.ref?' · Référent : '+esc(s.ref):'')+'</p>'+(s.schedule?'<p>Rythme d’accueil : '+esc(s.schedule)+'</p>':'')+(section==='all'?historySection(s,true):'')+sections.map(k=>'<section><h2>'+exportSections[k]+'</h2>'+(parts[k]()||'<p>Aucune saisie enregistrée.</p>')+'</section>').join('');
  const previousTitle=document.title;
  document.title='La Parenthèse - '+s.name+' - '+(exportSections[section]||'Dossier complet');
  report.removeAttribute('aria-hidden');
@@ -444,10 +512,11 @@ function printDossier(s,section){
  window.print();
 }
 function evolution(s,p){
-if(!s.reviews.length){p.innerHTML='<p>Enregistrez un bilan pour afficher la comparaison.</p>';return}
+const history=historySection(s);
+if(!s.reviews.length){p.innerHTML=history+'<p>Enregistrez un bilan pour afficher la comparaison.</p>';return}
 const reviews=[...s.reviews].sort((a,b)=>a.date.localeCompare(b.date));
 function table(title,items,prefix){return '<section class="card scroll"><h2>'+title+'</h2><table><thead><tr><th>Indicateur</th>'+reviews.map(r=>'<th>'+esc(r.kind)+'<br>'+fmt(r.date)+'</th>').join('')+'</tr></thead><tbody>'+items.map((l,i)=>'<tr><th scope="row">'+esc(l)+'</th>'+reviews.map(r=>'<td>'+esc(r[prefix+i]||'—')+'</td>').join('')+'</tr>').join('')+'</tbody></table></section>'}
-p.innerHTML=button('Imprimer / PDF','print')+table('Regard du jeune',young,'y')+table('Regard professionnel',pro.map(a=>a[0]),'p');
+p.innerHTML=button('Imprimer / PDF','print')+history+table('Regard du jeune',young,'y')+table('Regard professionnel',pro.map(a=>a[0]),'p');
 }
 app.onclick=handle;session.onclick=handle;
 function handle(e){
@@ -458,7 +527,7 @@ if(action==='deleteStudent'){
  const index=state.students.findIndex(s=>s.id===selected);
  if(index<0)return;
  const student=state.students[index];
- if(!confirm('Supprimer définitivement le dossier de '+student.name+' ? Les observations, synthèses et bilans de cet élève seront aussi supprimés.'))return;
+ if(!confirm('Supprimer définitivement le dossier de '+student.name+' ? Les observations, synthèses, bilans et pièces jointes de cet élève seront aussi supprimés.'))return;
  state.students.splice(index,1);
  if(!save()){state.students.splice(index,0,student);return}
  selected='';
