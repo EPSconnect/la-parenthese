@@ -1,4 +1,4 @@
-<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>La Parenthèse · Test partagé</title>
+<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>La Parenthèse</title>
 <style>
 :root{
  color-scheme:light;
@@ -218,7 +218,7 @@ function initialScreen(){
  if(fragment.has('error'))document.getElementById('codeError').textContent='Le lien est expiré ou déjà utilisé. Demandez un nouveau lien.';
 }
 function teacherLogin(){
- app.innerHTML='<section class="hero"><div class="hero-copy"><h1>La Parenthèse</h1><p class="notice">Test de l’espace partagé. Utilisez uniquement des dossiers et des pièces fictifs.</p><form id="adultForm">'+
+ app.innerHTML='<section class="hero"><div class="hero-copy"><h1>La Parenthèse</h1><p class="notice">Utilisez uniquement des dossiers et des pièces fictifs pendant la phase pilote.</p><form id="adultForm">'+
   input('author','Nom de l’intervenant','text','',true)+input('email','Adresse du compte','email','',true)+
   '<label>Mot de passe<input name="password" type="password" autocomplete="current-password" required></label><p id="codeError" role="alert"></p><button class="primary">Accéder aux dossiers</button><button type="button" id="recoverPassword">Créer ou réinitialiser mon mot de passe</button></form></div><div class="hero-art" aria-hidden="true"><span>( )</span></div></section>';
  const recovery=document.getElementById('recoverPassword');
@@ -242,7 +242,7 @@ function teacherLogin(){
   error.textContent='';
   try{
    const login=await api('/auth/v1/token?grant_type=password',null,{method:'POST',body:JSON.stringify({email:v.email.trim(),password:v.password})});
-   if(!login.access_token||!await loadShared(login.access_token)){error.textContent='Ce compte ne fait pas partie de l’équipe de test.';return}
+   if(!login.access_token||!await loadShared(login.access_token)){error.textContent='Ce compte n’est pas autorisé à accéder aux dossiers.';return}
    token=login.access_token;
    adult=v.author.trim();
    render();
@@ -251,7 +251,7 @@ function teacherLogin(){
  });
 }
 function render(){
-session.innerHTML=adult?'<span>Test partagé · '+esc(adult)+'</span> '+button('Actualiser','refreshShared')+' '+button('Se déconnecter','switch'):'';
+session.innerHTML=adult?'<span>'+esc(adult)+'</span> '+button('Actualiser','refreshShared')+' '+button('Se déconnecter','switch'):'';
 if(!adult){teacherLogin();return}
 const s=state.students.find(x=>x.id===selected);
 if(!s){dashboard();return}
@@ -329,7 +329,7 @@ function historySection(s,print=false){
   (attachments?'<h3>Pièces jointes</h3><ul>'+attachments+'</ul>':'')+'</section>';
 }
 function newStudent(){
-document.querySelector('#new').innerHTML='<form id="studentForm" class="card"><h2>Ajouter un élève</h2><p class="muted">Les dossiers saisis ici sont partagés avec l’équipe de test. Utilisez des données fictives.</p><div class="grid">'+input('name','Nom et prénom ou code élève','text','',true)+input('classe','Classe','text','',true)+select('group','Groupe',['Parcours','Respiration'],true)+'<div id="module" hidden>'+select('module','Module',['1','2','3','4'])+'</div>'+input('start','Entrée','date',today(),true)+input('end','Sortie prévue','date')+input('ref','Référent')+'</div>'+area('schedule','Rythme et emploi du temps aménagé')+'<fieldset><legend>Ancien dossier (facultatif)</legend><label>Scans et photos<input type="file" id="archiveFiles" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif" multiple></label><p class="muted">Sélectionnez plusieurs fichiers d’un coup. Les photos sont compressées et les pièces sont ajoutées au dossier partagé. Joignez uniquement des pièces fictives.</p>'+input('historyDate','Date du repère','date')+area('historyNotes','Points de départ à comparer avec les prochains bilans')+'<p id="archiveError" role="alert"></p></fieldset><button class="primary">Créer le dossier</button></form>';
+document.querySelector('#new').innerHTML='<form id="studentForm" class="card"><h2>Ajouter un élève</h2><p class="muted">Utilisez des données fictives pendant la phase pilote.</p><div class="grid">'+input('name','Nom et prénom ou code élève','text','',true)+input('classe','Classe','text','',true)+select('group','Groupe',['Parcours','Respiration'],true)+'<div id="module" hidden>'+select('module','Module',['1','2','3','4'])+'</div>'+input('start','Entrée','date',today(),true)+input('end','Sortie prévue','date')+input('ref','Référent')+'</div>'+area('schedule','Rythme et emploi du temps aménagé')+'<fieldset><legend>Ancien dossier (facultatif)</legend><label>Scans et photos<input type="file" id="archiveFiles" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif" multiple></label><p class="muted">Sélectionnez plusieurs fichiers d’un coup. Les photos sont compressées et les pièces sont ajoutées au dossier partagé. Joignez uniquement des pièces fictives.</p>'+input('historyDate','Date du repère','date')+area('historyNotes','Points de départ à comparer avec les prochains bilans')+'<p id="archiveError" role="alert"></p></fieldset><button class="primary">Créer le dossier</button></form>';
 const f=document.querySelector('#studentForm');
 f.elements.group.onchange=()=>{const r=f.elements.group.value==='Respiration';document.querySelector('#module').hidden=!r;f.elements.module.required=r;f.elements.end.required=r};
 form('studentForm',async(v,f)=>{
