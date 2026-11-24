@@ -1,0 +1,549 @@
+<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>La Parenthèse · Test partagé</title>
+<style>
+:root{
+ color-scheme:light;
+ font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+ color:#20332d;background:#f5f5ef;
+ --green:#225b48;--ink:#16382c;--line:#dce5db;--muted:#52645b;--surface:#fff;
+ --serif:Georgia,"Times New Roman",serif;
+}
+*{box-sizing:border-box}
+body{margin:0}
+header{background:#153c30;color:#fff;min-height:70px;padding:12px max(20px,calc((100vw - 1120px)/2));display:flex;justify-content:space-between;align-items:center;gap:14px}
+.brand{display:flex;align-items:center;gap:11px;font-size:1rem;letter-spacing:.015em;white-space:nowrap}
+.brand-icon{display:grid;place-items:center;width:36px;height:36px;border-radius:11px;background:#d8e6ad;color:#1b4938;font-family:var(--serif);font-size:1.16rem;letter-spacing:-.09em}
+#session{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:7px;font-size:.88rem}
+header button{background:#214d3e;color:#fff;border-color:#577b6c;font-size:.83rem;min-height:36px}
+main{max-width:1160px;margin:36px auto 60px;padding:0 20px}
+h1{font-family:var(--serif);font-size:clamp(2rem,5vw,3.4rem);font-weight:400;letter-spacing:-.045em;line-height:1.05;margin:0 0 14px;color:var(--ink)}
+h2{font-size:1.2rem;line-height:1.25;margin:0 0 12px;color:var(--ink)}
+h3{line-height:1.35}
+p,small{line-height:1.55}
+small{display:block;color:var(--muted)}
+button,input,textarea,select{font:inherit}
+button,select,input,textarea{border:1px solid var(--line);border-radius:10px;padding:9px 12px}
+button{cursor:pointer;background:#fff;color:inherit;font-size:.94rem;font-weight:650;min-height:42px}
+button.primary,button[aria-current=true]{background:var(--green);color:white;border-color:var(--green)}
+:focus-visible{outline:3px solid #ae7933;outline-offset:3px}
+label{display:block;margin:13px 0;font-weight:540}
+input,textarea,select{display:block;width:100%;margin-top:6px;background:#fafbf8;color:inherit;font-weight:400;min-height:42px}
+textarea{min-height:76px;resize:vertical}
+nav,.actions{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}
+nav{padding:7px;background:#e8ede4;border:1px solid var(--line);border-radius:14px}
+nav button:not([aria-current=true]){background:transparent;border-color:transparent}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:16px}
+.card,details{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:13px}
+.card{box-shadow:0 5px 16px #16382c08}
+.card details{background:#f7f9f4}
+.tag{display:inline-block;margin:0;padding:5px 10px;border-radius:20px;background:#e6eed2;color:#26472e;font-size:.8rem;font-weight:700}
+.notice{background:#f9edce;color:#533f21;padding:12px 16px;border-radius:10px}
+.muted{color:var(--muted)}
+summary{cursor:pointer;font-weight:650}
+.scale{display:flex;flex-wrap:wrap;gap:6px;margin:9px 0 15px}
+.scale label{margin:0;cursor:pointer;border:1px solid #dce7d8;border-radius:9px;padding:8px;background:#edf3ea;font-size:.87rem}
+.scale label:has(input:checked){background:var(--green);border-color:var(--green);color:white}
+.scale input{display:inline;width:auto;min-height:0;margin:0 4px 0 0;accent-color:#36745d}
+fieldset{border:0;padding:0;margin:14px 0;min-width:0}
+legend{font-weight:650}
+.scroll{overflow:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+td,th{padding:9px;text-align:left;border-bottom:1px solid var(--line)}
+thead{background:#edf2e8}
+.narrow{max-width:580px}
+.split{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+progress{width:100%;accent-color:var(--green)}
+.hero{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(220px,1fr);min-height:400px;background:#fff;border:1px solid var(--line);border-radius:24px;overflow:hidden}
+.hero-copy{padding:clamp(24px,5vw,60px);align-self:center}
+.hero h1{font-size:clamp(2.75rem,7vw,5rem)}
+.hero-copy>p{color:var(--muted);max-width:34rem;margin:0 0 20px}
+.hero-copy .notice{max-width:35rem;font-size:.88rem;margin-top:22px}
+.hero-art{display:grid;place-items:center;overflow:hidden;background:#1a4939;color:#dce7b4;font-family:var(--serif);font-size:clamp(130px,24vw,325px);line-height:1}
+.hero-art span{display:block;border:1px solid #8eb49d;border-radius:50%;width:82%;aspect-ratio:1;text-align:center;line-height:.77;letter-spacing:-.08em}
+.role-picker{margin-top:22px;max-width:700px}
+.role-picker button{text-align:left;min-height:74px;padding:16px;font-size:1rem}
+.profile{margin-top:15px;padding:22px;background:#e9efe1;border:1px solid var(--line);border-radius:17px}
+.profile h1{margin:9px 0}
+.profile p:last-child{margin-bottom:0}
+.dossier-grid .card{border-top:3px solid #84a88b}
+.dossier-grid .card:has(.tag-respiration){border-top-color:#c69b59}
+.tag-respiration{background:#f3e6cf;color:#60451f}
+.status{font-size:.88rem;font-weight:650;color:#365a47}
+@media (hover:hover){
+ button:hover{border-color:#6d9277}
+ button.primary:hover{background:#194936}
+ nav button:not([aria-current=true]):hover{background:#f6f8f2}
+}
+@media (max-width:650px){
+ header{padding-inline:14px}
+ main{margin-top:22px;padding-inline:14px}
+ .hero{grid-template-columns:1fr;min-height:0}
+ .hero-art{min-height:116px;font-size:124px}
+ .hero-art span{width:140px;margin-block:-9px}
+ .split .actions{margin:4px 0}
+ nav{gap:4px}
+ nav button{padding:7px;font-size:.83rem}
+}
+@media (max-width:390px){header{align-items:flex-start;flex-direction:column;gap:7px}#session{justify-content:flex-start}}
+@media print{header,nav,button,.notice{display:none}main{margin:0}.card,details{break-inside:avoid}.card{box-shadow:none}}
+#pdfReport{display:none}
+@media print{
+ @page{size:A4;margin:15mm}
+ body.print-dossier{background:white;color:#182921;font-size:10pt}
+ body.print-dossier #app{display:none}
+ body.print-dossier #pdfReport{display:block;margin:0;padding:0;max-width:none}
+ #pdfReport h2,#pdfReport h3,#pdfReport dt{break-after:avoid}
+ #pdfReport h1{font-size:24pt}
+ #pdfReport .card{break-inside:auto;padding:8px 12px}
+ #pdfReport dd,#pdfReport p{white-space:pre-wrap;overflow-wrap:anywhere}
+ #pdfReport dl{margin:8px 0}
+ #pdfReport dd{margin:2px 0 8px 0}
+}
+
+.auteuil-card{display:inline-flex;align-items:center;gap:10px;margin-top:16px;padding:8px 12px 8px 8px;border:1px solid #e6d8dc;border-radius:12px;background:#fff;color:#453940;font-size:.82rem;font-weight:600}
+.auteuil-card img{display:block;width:44px;height:44px;border-radius:4px}
+.auteuil-footer{display:flex;justify-content:flex-end;align-items:center;gap:8px;width:min(100%,1180px);margin:0 auto;padding:0 24px 18px;color:#63575c;font-size:.76rem}
+.auteuil-round{display:grid;place-items:center;width:40px;height:40px;border:1px solid #e6d8dc;border-radius:50%;background:#fff}
+.auteuil-round img{width:25px;height:25px;border-radius:2px}
+@media print{
+ .auteuil-card{display:none}
+ .auteuil-footer{position:fixed;right:0;bottom:-11mm;width:auto;margin:0;padding:0;font-size:8pt}
+ .auteuil-round{width:9mm;height:9mm}
+ .auteuil-round img{width:6mm;height:6mm}
+}
+</style>
+<header><b class="brand"><span class="brand-icon" aria-hidden="true">❨ ❩</span>La Parenthèse</b><div id="session"></div></header><main id="app"><h1>La Parenthèse</h1><p>Si cet écran reste affiché, télécharge le fichier HTML et ouvre-le dans un navigateur sur ordinateur. L’aperçu du fichier peut empêcher le lancement de l’application.</p></main>
+<main id="pdfReport" aria-hidden="true"></main><footer class="auteuil-footer"><span>Apprentis d’Auteuil</span><span class="auteuil-round"><img id="auteuil-logo" src="data:image/webp;base64,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" alt="" width="25" height="25"></span></footer>
+<script>
+const [young,pro]=[["Je me sens bien et en confiance.", "Je m'entends plutôt bien avec les autres.", "Je respecte les règles et les personnes.", "J'arrive avec mes affaires et je me mets au travail.", "J'arrive à écouter et à rester concentré(e).", "J'essaie même quand c'est difficile.", "Je participe et je pose des questions si besoin.", "Je prends en compte les conseils des adultes.", "Je fais des efforts pour avancer dans mon projet."], [["Sécurité affective et sentiment de confiance", "Capacité à s'apaiser au sein du dispositif et à repérer des adultes ressources."], ["Régulation émotionnelle et gestion du stress", "Identification des émotions, maîtrise des débordements (colère, repli, anxiété)."], ["Relation aux pairs et intégration au groupe", "Positionnement ajusté (ni isolement systématique, ni recherche de conflit)."], ["Relation de confiance avec les adultes", "Acceptation du dialogue, de la bienveillance et du cadre éducatif."], ["Alliance éducative avec la famille", "Qualité du lien collège-famille, soutien perçu par le jeune à la maison."], ["Hygiène de vie, rythme et disponibilité", "Fatigue observable, sommeil, ponctualité matinale, tenue adaptée."], ["Conscience de ses ressources et points d'appui", "Capacité à nommer ce qui lui fait du bien ou ce qui l'aide en cas de difficulté."], ["Assiduité et respect des horaires", "Régularité de présence, ponctualité aux temps d'accueil et d'ateliers."], ["Compréhension et acceptation des règles", "Intégration des limites posées par le règlement et les adultes."], ["Communication et politesse", "Qualité du langage verbal et non verbal envers les adultes et les pairs."], ["Écoute et respect de la parole d'autrui", "Capacité à attendre son tour, tolérance aux avis divergents."], ["Respect des locaux et du matériel collectif", "Soin apporté aux espaces partagés et aux outils mis à disposition."], ["Responsabilisation face aux actes et paroles", "Reconnaissance de sa part de responsabilité sans déni ni projection systématique."], ["Gestion des conflits et de la frustration", "Recours à la médiation ou à l'adulte plutôt qu'au passage à l'acte."], ["Organisation matérielle", "Arrivée avec le matériel nécessaire, gestion du cahier/carnet et des supports."], ["Mise au travail et engagement initial", "Entrée dans la tâche après les consignes sans évitement prolongé."], ["Attention soutenue et concentration", "Capacité à rester mobilisé sur une activité sur une durée adaptée."], ["Compréhension des consignes et demande d'aide", "Identification de ses blocages et sollicitation pertinente de l'adulte."], ["Persévérance face à l'obstacle et droit à l'erreur", "Tolérance à la difficulté cognitive sans abandon immédiat."], ["Autonomie et prise d'initiative", "Capacité à avancer seul sur une consigne simple ou balisée."], ["Soin, relecture et vérification du travail", "Souci de la qualité de présentation et auto-contrôle avant validation."], ["Participation aux ateliers collectifs", "Implication active dans les activités éducatives, culturelles ou sportives."], ["Prise de parole et expression d'idées", "Capacité à donner son avis, argumenter et se situer dans un groupe."], ["Prise en compte des conseils et retours", "Réceptivité aux remédiations proposées par les intervenants."], ["Prise d'initiatives et responsabilités", "Engagement volontaire dans des tâches collectives ou projets."], ["Projection vers l'avenir et orientation", "Curiosité pour les métiers, formations, stages ou immersions."], ["Appropriation des codes sociaux et professionnels", "Posture, présentation et savoir-être lors des sorties, visites ou stages."], ["Remobilisation globale dans le parcours scolaire", "Sens retrouvé à l'école et capacité à se projeter dans le retour en classe."]]];
+const domains=['Bien-être et posture personnelle','Vivre ensemble et respect du cadre','Travail scolaire et apprentissages','Implication et projet d’avenir'];
+const youthDomains=['Moi au collège / bien-être','Mon travail et mes apprentissages','Mon implication et mon projet'];
+const ys=['Pas encore','Parfois','Souvent'], ps=['Très fragile','En cours de consolidation','Autonome','Non observé'];
+const quick=['Aide rapprochée','Avec de l’aide','Seul dans cette situation','Seul dans plusieurs situations','Non observé'];
+const skills={'Orientation':['Exprime un intérêt pour un métier','Identifie une prochaine étape'], 'Prise de parole':['Donne son avis','Présente une réalisation'], 'Confiance en soi':['Ose essayer','Nomme une réussite'], 'Travail scolaire':['Se met au travail','Persévère face à une difficulté','Demande de l’aide'], 'Relation aux autres':['Écoute sans interrompre','Tient un rôle dans le groupe','Exprime un désaccord avec respect'], 'Émotions':['Nomme une émotion','Demande une pause','Reprend l’activité après une pause']};
+const activities=['Mini-entreprise','Mini-reporter','Orientation','Remobilisation scolaire','Émotions','Détente et plaisir','Sport','Autre'];
+const closing=['Retour complet dans la classe d’origine','Retour progressif / aménagé','Poursuite d’un accompagnement ciblé','Orientation / stage / dispositif relais','Suivi extérieur préconisé'];
+const openYoung=['Une chose dont je suis fier / fière','Une chose que je veux améliorer','J’aurais besoin d’aide pour','Mon petit objectif pour la prochaine fois'];
+const weekly=['Positif','Fragile','Alerte','Absent'];
+const app=document.querySelector('#app'), session=document.querySelector('#session');
+let adult='', selected='', tab='observations', filter='Tous', period=monday(today());
+let state={students:[]}, token='', version=null, busy=false;
+const endpoint='https://phyysfjzsbxhlbbgcwrg.supabase.co';
+const publicKey='sb_publishable_m_PRNt8jJrxh3ASb8SV4tQ_k7lkOGJM';
+async function api(path,accessToken,options={}){
+ const response=await fetch(endpoint+path,{
+  ...options,
+  headers:{apikey:publicKey,...(accessToken?{Authorization:'Bearer '+accessToken}:{}),
+   ...(options.body?{'Content-Type':'application/json'}:{}),...options.headers}
+ });
+ if(!response.ok)throw Error(String(response.status));
+ return response.json();
+}
+const dossiersPath='/rest/v1/parenthese_test_dossiers?id=eq.1';
+async function loadShared(accessToken){
+ const rows=await api(dossiersPath+'&select=version,payload',accessToken);
+ if(rows.length!==1)return false;
+ if(!validBackup(rows[0].payload))throw Error('Données illisibles');
+ state=rows[0].payload;
+ version=rows[0].version;
+ return true;
+}
+function today(){return new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Paris'})}
+function shift(d,n){const x=new Date(d+'T12:00:00Z');x.setUTCDate(x.getUTCDate()+n);return x.toISOString().slice(0,10)}
+function monday(d){return shift(d,-((new Date(d+'T12:00:00Z').getUTCDay()+6)%7))}
+function fmt(d){return d?d.split('-').reverse().join('/'):'—'}
+function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+let observationEdit=null;
+let savedMessage='';
+async function save(){
+ busy=true;
+ app.inert=session.inert=true;
+ try{
+  const rows=await api(dossiersPath+'&version=eq.'+version+'&select=version',token,{
+   method:'PATCH',headers:{Prefer:'return=representation'},
+   body:JSON.stringify({version:version+1,payload:state})
+  });
+  if(rows.length!==1){
+   alert('Le dossier partagé a changé ou votre accès a expiré. Copiez votre saisie avant d’actualiser.');
+   return false;
+  }
+  version=rows[0].version;
+  savedMessage='Saisie enregistrée dans le dossier partagé.';
+  return true;
+ }catch(e){
+  alert(e.message==='401'?'La connexion a expiré. Copiez votre saisie, puis reconnectez-vous.':'Enregistrement partagé impossible. Votre saisie est encore à l’écran.');
+  return false;
+ }finally{busy=false;app.inert=session.inert=false}
+}
+function opts(a){return a.map(s=>'<option>'+esc(s)+'</option>').join('')}
+function input(n,l,type='text',v='',required=false){return '<label>'+l+'<input name="'+n+'" type="'+type+'" value="'+esc(v)+'" '+(required?'required':'')+'></label>'}
+function area(n,l,v=''){return '<label>'+l+'<textarea name="'+n+'">'+esc(v)+'</textarea></label>'}
+function select(n,l,a,required=false){return '<label>'+l+'<select name="'+n+'" '+(required?'required':'')+'><option value="">Choisir</option>'+opts(a)+'</select></label>'}
+function scale(n,l,a,required=false){return '<fieldset><legend>'+esc(l)+'</legend><div class="scale">'+a.map((s,i)=>'<label><input type="radio" name="'+n+'" value="'+esc(s)+'" '+(required&&i===0?'required':'')+'>'+esc(s)+'</label>').join('')+'</div></fieldset>'}
+function groups(records,prefix,labels,per,levels){return labels.map((l,g)=>'<details '+(g===0?'open':'')+'><summary>'+l+'</summary>'+records.slice(g*per,(g+1)*per).map((item,i)=>Array.isArray(item)?'<small>'+esc(item[1])+'</small>'+scale(prefix+(g*per+i),item[0],levels):scale(prefix+(g*per+i),item,levels)).join('')+'</details>').join('')}
+function form(id,fn){document.getElementById(id).onsubmit=e=>{e.preventDefault();return fn(Object.fromEntries(new FormData(e.target)),e.target)}}
+function button(label,action,primary=false){return '<button type="button" data-action="'+action+'" '+(primary?'class="primary"':'')+'>'+label+'</button>'}
+function teacherLogin(){
+ app.innerHTML='<section class="hero"><div class="hero-copy"><h1>La Parenthèse</h1><p class="notice">Test de l’espace partagé. Utilisez uniquement des dossiers et des pièces fictifs.</p><form id="adultForm">'+
+  input('author','Nom de l’intervenant','text','',true)+input('email','Adresse du compte','email','',true)+
+  '<label>Mot de passe<input name="password" type="password" autocomplete="current-password" required></label><p id="codeError" role="alert"></p><button class="primary">Accéder aux dossiers</button></form></div><div class="hero-art" aria-hidden="true"><span>( )</span></div></section>';
+ form('adultForm',async(v,f)=>{
+  const error=document.getElementById('codeError'), submit=f.querySelector('button');
+  if(!v.author.trim()){error.textContent='Renseignez le nom de l’intervenant.';return}
+  submit.disabled=true;
+  error.textContent='';
+  try{
+   const login=await api('/auth/v1/token?grant_type=password',null,{method:'POST',body:JSON.stringify({email:v.email.trim(),password:v.password})});
+   if(!login.access_token||!await loadShared(login.access_token)){error.textContent='Ce compte ne fait pas partie de l’équipe de test.';return}
+   token=login.access_token;
+   adult=v.author.trim();
+   render();
+  }catch(e){error.textContent=/^(400|401)$/.test(e.message)?'Adresse ou mot de passe incorrect, ou compte à confirmer.':'Connexion impossible. Réessayez dans un instant.'}
+  finally{submit.disabled=false}
+ });
+}
+function render(){
+session.innerHTML=adult?'<span>Test partagé · '+esc(adult)+'</span> '+button('Actualiser','refreshShared')+' '+button('Se déconnecter','switch'):'';
+if(!adult){teacherLogin();return}
+const s=state.students.find(x=>x.id===selected);
+if(!s){dashboard();return}
+app.innerHTML=button('← Dossiers','home')+'<section class="profile"><p class="tag">'+esc(s.group)+(s.module?' · Module '+esc(s.module):'')+'</p><h1>'+esc(s.name)+'</h1><p class="muted">'+esc(s.classe)+' · Du '+fmt(s.start)+' au '+fmt(s.end)+'</p>'+'<div class="actions">'+button('Télécharger le dossier (PDF)','pdf:all',true)+button('Supprimer le dossier','deleteStudent')+'</div>'+'</section><nav>'+[['observations','Observations'],['semaine','Synthèse de semaine'],['bilans','Bilans'],['evolution','Évolution'],['exports','Documents PDF']].map(([k,l])=>'<button type="button" data-action="'+k+'" aria-current="'+(tab===k)+'">'+l+'</button>').join('')+'</nav><div id="panel"></div>';
+({observations, semaine, bilans, evolution, exports:pdfExports})[tab](s,document.querySelector('#panel'));
+if(savedMessage){
+ document.querySelector('#panel').insertAdjacentHTML('afterbegin','<p class="notice" role="status">'+esc(savedMessage)+'</p>');
+ savedMessage='';
+}
+}
+function dashboard(){
+app.innerHTML='<div class="split"><h1>Dossiers des jeunes</h1>'+'</div><div id="new"></div><h2>Élèves suivis</h2><nav>'+['Tous','Parcours','Respiration'].map((l,i)=>'<button data-action="filter'+i+'" aria-current="'+(filter===l)+'">'+l+'</button>').join('')+'</nav><div class="grid dossier-grid">'+state.students.filter(s=>filter==='Tous'||s.group===filter).map(s=>'<article class="card"><span class="tag '+(s.group==='Respiration'?'tag-respiration':'')+'">'+s.group+(s.module?' · Module '+esc(s.module):'')+'</span><h2 style="margin-top:12px">'+esc(s.name)+'</h2><p class="muted">'+esc(s.classe)+' · '+s.reviews.length+' bilan(s) · '+s.obs.length+' observation(s)</p><p class="status">'+dossierStatus(s)+'</p>'+button('Ouvrir le dossier','student'+s.id,true)+'</article>').join('')+'</div>'+(state.students.some(s=>filter==='Tous'||s.group===filter)?'':'<p class="muted">Aucun dossier dans cette liste.</p>')+(savedMessage?'<p class="notice" role="status">'+esc(savedMessage)+'</p>':'');
+savedMessage='';
+newStudent();
+}
+function dossierStatus(s){
+ if(s.reviews.some(r=>r.kind==='Sortie'))return 'Bilan de sortie enregistré';
+ if(s.reviews.some(r=>r.kind==='Entrée'))return 'En cours de suivi';
+ return s.entryDraft?'Bilan d’entrée en brouillon':'Bilan d’entrée à faire';
+}
+function validBackup(data){
+ const record=x=>x&&typeof x==='object'&&!Array.isArray(x);
+ const date=x=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x)&&!Number.isNaN(Date.parse(x));
+ const flat=x=>record(x)&&Object.values(x).every(v=>typeof v==='string');
+ return record(data)&&Array.isArray(data.students)&&
+ new Set(data.students.map(s=>s?.id)).size===data.students.length&&data.students.every(s=>
+  record(s)&&typeof s.id==='string'&&/^[a-zA-Z0-9-]+$/.test(s.id)&&typeof s.name==='string'&&typeof s.classe==='string'&&
+  ['Parcours','Respiration'].includes(s.group)&&date(s.start)&&(!s.end||date(s.end))&&
+  Array.isArray(s.obs)&&s.obs.every(o=>flat(o)&&date(o.date))&&
+  Array.isArray(s.reviews)&&s.reviews.every(r=>flat(r)&&date(r.date)&&['Entrée','Intermédiaire','Sortie'].includes(r.kind)&&
+   Object.keys(r).every(k=>!/^([yp])\d+$/.test(k)||Number(k.slice(1))<(k[0]==='y'?young.length:pro.length)))&&
+  (!s.history||(record(s.history)&&typeof s.history.notes==='string'&&(!s.history.date||date(s.history.date))&&
+   Array.isArray(s.history.files)&&s.history.files.every(f=>record(f)&&typeof f.name==='string'&&typeof f.url==='string'&&archiveUrl.test(f.url))))&&
+  record(s.weeks)&&Object.entries(s.weeks).every(([k,w])=>date(k)&&flat(w))&&
+  (!s.entryDraft||(record(s.entryDraft)&&Object.entries(s.entryDraft).every(([k,v])=>k==='step'?Number.isInteger(v):typeof v==='string')))
+ );
+}
+const archiveUrl=/^data:(?:application\/pdf|image\/(?:jpeg|png|webp));base64,[A-Za-z0-9+/]+={0,2}$/;
+async function readArchiveFile(file){
+ let source=file;
+ if(/^image\/(jpeg|png|webp|heic|heif)$/.test(file.type)||/\.(jpe?g|png|webp|heic|heif)$/i.test(file.name)){
+  const photo=await createImageBitmap(file);
+  try{
+   const scale=Math.min(1,1700/Math.max(photo.width,photo.height));
+   const canvas=document.createElement('canvas');
+   canvas.width=Math.max(1,Math.round(photo.width*scale));
+   canvas.height=Math.max(1,Math.round(photo.height*scale));
+   const context=canvas.getContext('2d');
+   context.fillStyle='#fff';
+   context.fillRect(0,0,canvas.width,canvas.height);
+   context.drawImage(photo,0,0,canvas.width,canvas.height);
+   source=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.82));
+  }finally{photo.close()}
+ }else{
+  const header=await file.slice(0,5).text();
+  if(header!=='%PDF-')throw Error('Format non pris en charge.');
+  source=new Blob([file],{type:'application/pdf'});
+ }
+ if(!source||source.size>1500000)throw Error('Pièce trop volumineuse.');
+ const url=await new Promise((resolve,reject)=>{
+  const reader=new FileReader();
+  reader.onload=()=>resolve(reader.result);
+  reader.onerror=()=>reject(reader.error);
+  reader.readAsDataURL(source);
+ });
+ if(!archiveUrl.test(url))throw Error('Fichier non reconnu.');
+ return {name:source.type==='image/jpeg'?file.name.replace(/\.[^.]+$/,'')+'.jpg':file.name,url};
+}
+function historySection(s,print=false){
+ const history=s.history;
+ if(!history||!(history.notes||history.date||history.files.length))return '';
+ const attachments=history.files.map(f=>'<li>'+(print?esc(f.name):'<a href="'+esc(f.url)+'" download="'+esc(f.name)+'">'+esc(f.name)+'</a>')+'</li>').join('');
+ return '<section class="card"><h2>Ancien dossier</h2>'+(history.date?'<p>Repère du '+fmt(history.date)+'</p>':'')+
+  (history.notes?'<p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(history.notes)+'</p>':'')+
+  (attachments?'<h3>Pièces jointes</h3><ul>'+attachments+'</ul>':'')+'</section>';
+}
+function newStudent(){
+document.querySelector('#new').innerHTML='<form id="studentForm" class="card"><h2>Ajouter un élève</h2><p class="muted">Les dossiers saisis ici sont partagés avec l’équipe de test. Utilisez des données fictives.</p><div class="grid">'+input('name','Nom et prénom ou code élève','text','',true)+input('classe','Classe','text','',true)+select('group','Groupe',['Parcours','Respiration'],true)+'<div id="module" hidden>'+select('module','Module',['1','2','3','4'])+'</div>'+input('start','Entrée','date',today(),true)+input('end','Sortie prévue','date')+input('ref','Référent')+'</div>'+area('schedule','Rythme et emploi du temps aménagé')+'<fieldset><legend>Ancien dossier (facultatif)</legend><label>Scans et photos<input type="file" id="archiveFiles" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif" multiple></label><p class="muted">Sélectionnez plusieurs fichiers d’un coup. Les photos sont compressées et les pièces sont ajoutées au dossier partagé. Joignez uniquement des pièces fictives.</p>'+input('historyDate','Date du repère','date')+area('historyNotes','Points de départ à comparer avec les prochains bilans')+'<p id="archiveError" role="alert"></p></fieldset><button class="primary">Créer le dossier</button></form>';
+const f=document.querySelector('#studentForm');
+f.elements.group.onchange=()=>{const r=f.elements.group.value==='Respiration';document.querySelector('#module').hidden=!r;f.elements.module.required=r;f.elements.end.required=r};
+form('studentForm',async(v,f)=>{
+ if(!v.name.trim()||!v.classe.trim()||(v.end&&v.end<v.start)){alert('Vérifiez le nom, la classe et les dates.');return}
+ if(v.group==='Respiration'&&(v.end<shift(v.start,27)||v.end>shift(v.start,42))){alert('Choisissez une période de 4 à 6 semaines.');return}
+ if(v.group==='Parcours')v.module='';
+ const submit=f.querySelector('button[type=submit],button.primary');
+ if(submit.disabled)return;
+ const error=f.querySelector('#archiveError');
+ error.textContent='';
+ submit.disabled=true;
+ const files=[];
+ try{
+  for(const file of f.querySelector('#archiveFiles').files){
+   try{files.push(await readArchiveFile(file))}
+   catch(e){error.textContent=file.name+' : '+(e.message||'fichier illisible.')+' Essayez un JPEG ou un PDF allégé.';return}
+  }
+  if(files.reduce((size,file)=>size+file.url.length,0)>2700000){
+   error.textContent='Les pièces dépassent la capacité prévue pour un dossier. Réduisez la taille des scans ou joignez moins de fichiers.';
+   return;
+  }
+  if(!f.isConnected||!adult)return;
+  const {historyDate,historyNotes,...fields}=v;
+  const id=String(Date.now())+'-'+Math.random().toString(36).slice(2);
+  const history={date:historyDate,notes:historyNotes.trim(),files};
+  state.students.push({...fields,name:v.name.trim(),classe:v.classe.trim(),id,history,obs:[],reviews:[],weeks:{}});
+  if(!await save()){state.students.pop();return}
+  filter='Tous';selected=id;tab='bilans';render();app.scrollIntoView();
+ }finally{submit.disabled=false}
+});
+}
+function observations(s,p){
+const index=observationEdit;
+const entry=index===null?null:s.obs[index];
+p.innerHTML='<form id="obs" class="card"><h2>'+ (entry?'Corriger l’observation':'Ajouter une observation') +'</h2><div class="grid">'+input('date','Date','date',entry?.date||today(),true)+select('activity','Activité',activities,true)+select('dynamic','Dynamique',weekly,true)+'</div><div id="competences"></div>'+area('fact','Fait observé, réussite ou difficulté',entry?.fact)+'<button class="primary">Enregistrer l’observation</button>'+(entry?button('Annuler la correction','cancelObs'):'')+'</form><h2>Dernières observations</h2>'+obsList(s.obs,true);
+const f=document.querySelector('#obs');
+function draw(){const absent=f.elements.dynamic.value==='Absent';document.querySelector('#competences').innerHTML=absent?'':'<div class="grid">'+[1,2].map(i=>'<div>'+select('skill'+i,i===1?'Compétence observée':'Deuxième compétence (facultatif)',Object.entries(skills).flatMap(([g,a])=>a.map(x=>g+' · '+x)))+select('level'+i,'Niveau',quick)+'</div>').join('')+'</div>'}
+if(entry){
+ f.elements.activity.value=entry.activity;
+ f.elements.dynamic.value=entry.dynamic;
+}
+f.elements.dynamic.onchange=()=>{
+ const box=document.querySelector('#competences');
+ if(!box.childElementCount||f.elements.dynamic.value==='Absent')draw();
+};
+draw();
+if(entry)for(const field of ['skill1','skill2','level1','level2']){
+ if(f.elements[field])f.elements[field].value=entry[field]||'';
+}
+form('obs',async v=>{if(v.date<s.start||v.date>today()){alert('Choisissez une date comprise entre l’entrée du jeune et aujourd’hui.');return}for(const i of [1,2])if(Boolean(v['skill'+i])!==Boolean(v['level'+i])){alert('Choisissez une compétence et son niveau ensemble.');return}if(v.dynamic!=='Absent'&&!v.skill1&&!v.skill2&&!v.fact.trim()){alert('Ajoutez une compétence ou un fait observé.');return}if(v.skill1&&v.skill1===v.skill2){alert('Choisissez deux compétences différentes.');return}if(entry)s.obs[index]={...v,adult:entry.adult,editedBy:adult};
+else s.obs.push({...v,adult});
+if(await save()){observationEdit=null;render()}
+else if(entry)s.obs[index]=entry;
+else s.obs.pop()});
+}
+function obsList(list,editable=false){
+return list.length?list.map((v,i)=>({v,i})).sort((a,b)=>b.v.date.localeCompare(a.v.date)||b.i-a.i).map(({v,i})=>'<article class="card"><b>'+fmt(v.date)+' · '+esc(v.activity)+'</b><p class="muted">'+esc(v.adult)+' · '+esc(v.dynamic)+'</p>'+[1,2].filter(i=>v['skill'+i]).map(i=>'<p>'+esc(v['skill'+i])+' — '+esc(v['level'+i])+'</p>').join('')+(v.fact?'<p>'+esc(v.fact)+'</p>':'')+(v.editedBy?'<small>Corrigé par '+esc(v.editedBy)+'</small>':'')+(editable?button('Corriger','editObs'+i):'')+'</article>').join(''):'<p class="muted">Aucune observation sur cette période.</p>';
+}
+function semaine(s,p){
+const end=shift(period,6), list=s.obs.filter(o=>o.date>=period&&o.date<=end), summary=s.weeks[period]||{};
+p.innerHTML='<section class="card"><div class="split"><h2>Du '+fmt(period)+' au '+fmt(end)+'</h2><div>'+button('←','prev')+' '+button('→','next')+'</div></div><div class="grid">'+weekly.map(w=>'<div><b>'+list.filter(o=>o.dynamic===w).length+'</b> · '+w+'</div>').join('')+'</div></section><form id="summary" class="card"><h2>Synthèse de l’équipe</h2>'+area('win','Réussite à valoriser',summary.win)+area('watch','Point d’attention',summary.watch)+area('next','Priorité commune pour la semaine suivante',summary.next)+(summary.adult?'<p>Dernière saisie · '+esc(summary.adult)+'</p>':'')+'<button class="primary">Enregistrer la synthèse</button></form><h2>Contributions de la semaine</h2>'+obsList(list);
+form('summary',async v=>{if(!Object.values(v).some(x=>x.trim())){alert('Renseignez au moins un élément de synthèse.');return}const previous=s.weeks[period];s.weeks[period]={...v,adult};if(await save())render();else if(previous)s.weeks[period]=previous;else delete s.weeks[period]});
+}
+function bilans(s,p){
+const entry=s.reviews.find(r=>r.kind==='Entrée');
+const closure=s.reviews.some(r=>r.kind==='Sortie');
+const types=!entry?['Entrée']:closure?[]:s.group==='Parcours'?['Intermédiaire','Sortie']:['Sortie'];
+const pending=s.group==='Parcours'&&entry&&!closure;
+p.innerHTML='<div class="actions">'+types.map(k=>button({'Entrée':s.entryDraft?'Reprendre le brouillon':'Commencer le bilan d’entrée','Intermédiaire':'Bilan intermédiaire','Sortie':'Bilan de sortie'}[k],'review'+k,true)).join('')+'</div>'+(pending?'<p class="muted">Un bilan intermédiaire par mois pendant le parcours.</p>':'')+'<div id="review"></div><h2>Bilans enregistrés</h2>'+([...s.reviews].reverse().map(r=>'<details><summary>'+esc(r.kind)+' · '+fmt(r.date)+' · '+esc(r.adult)+'</summary>'+reviewRead(r)+'</details>').join('')||'<p class="muted">Aucun bilan enregistré.</p>');
+}
+function reviewRead(r){
+const content=Object.entries(r).filter(([k,v])=>v&&!['kind','date','adult'].includes(k));
+return '<dl>'+content.map(([k,v])=>{const m=k.match(/^([yp])([0-9]+)$/);const label=m?(m[1]==='y'?young[+m[2]]:pro[+m[2]][0]):reviewLabels[k]||k;return '<dt><b>'+esc(label)+'</b></dt><dd>'+esc(v)+'</dd>'}).join('')+'</dl>';
+}
+const reviewLabels={mood:'Ressenti',energy:'Énergie',expect:'Attentes du jeune',gain:'Ce que le jeune retient',origin:'Origine de la demande',reason:'Motifs et contexte de l’accueil',initial:'Freins et points d’appui',commit:'Engagements et aménagements',action:'Préconisation de sortie',meeting:'Date de réunion avec l’établissement et la famille',support:'Points de vigilance et aménagements à maintenir'};
+openYoung.forEach((l,i)=>reviewLabels['text'+i]=l);
+domains.forEach((l,i)=>{reviewLabels['goal'+i]='Objectif · '+l;reviewLabels['means'+i]='Moyens · '+l;reviewLabels['status'+i]='État de l’objectif · '+l;reviewLabels['team'+i]='Constat de l’équipe · '+l;reviewLabels['voice'+i]='Regard du jeune · '+l});
+Object.assign(reviewLabels,{
+ present:'Personnes présentes', family:'Responsables légaux informés', adhesion:'Adhésion du jeune',
+ rhythm:'Rythme d’accueil et aménagement du temps scolaire', logistics:'Matériel, transport et restauration',
+ interests:'Ce que le jeune aime faire ou aimerait essayer', obstacle:'Ce qui rend le collège difficile en ce moment',
+ resource:'Ce qui aide le jeune et les personnes ressources', checkpoint:'Date du prochain point',
+ contact:'Qui fait le point avec le jeune ?', firstAction:'Première action convenue'
+});
+domains.forEach((l,i)=>reviewLabels['evidence'+i]='Signe de réussite · '+l);
+const firstActionExamples=[
+ 'Choisir une première activité à essayer avec le référent',
+ 'Faire un point de cinq minutes avec le référent après la première séance',
+ 'Repérer un adulte à solliciter si une difficulté se présente',
+ 'Essayer la carte pause pendant un atelier',
+ 'Choisir une tâche courte à terminer pendant la prochaine séance',
+ 'Préparer une question à poser lors de l’atelier orientation',
+ 'Choisir un rôle dans le prochain travail de groupe',
+ 'Préparer ensemble le matériel pour la prochaine séance'
+];
+function entryForm(s,target){
+const existing=s.entryDraft||{};
+const objectiveExamples=['Demander une pause avant de quitter l’activité','Tenir un rôle pendant un atelier collectif','Commencer une tâche avec une consigne écrite','Poser une question sur un métier pendant une visite'];
+const stages=[
+ ['Cadre de l’accueil',input('date','Date de l’entretien','date',today(),true)+input('present',reviewLabels.present)+select('family',reviewLabels.family,['Oui','Non','À vérifier'])+select('origin',reviewLabels.origin,['Équipe éducative collège','Vie scolaire / CPE','Famille / Jeune','Commission / Partenaire'])+area('reason',reviewLabels.reason)+select('adhesion',reviewLabels.adhesion,['Favorable','À accompagner','Réticente'])+area('rhythm',reviewLabels.rhythm,s.schedule||'')+area('logistics',reviewLabels.logistics)],
+ ['La parole du jeune','<p>Tu peux répondre à ton rythme. C’est ton ressenti.</p>'+area('expect','Qu’est-ce que tu aimerais que La Parenthèse t’apporte ?')+area('interests','Qu’est-ce que tu aimes faire ou aimerais essayer ici ?')+area('obstacle','Qu’est-ce qui est difficile pour toi au collège en ce moment ?')+area('resource','Qu’est-ce qui t’aide quand c’est difficile ? À qui peux-tu parler ?')+scale('mood','Je me sens',['Bien','Moyen','Pas très bien'])+scale('energy','Mon énergie',['Haute','Moyenne','Basse'])+groups(young,'y',youthDomains,3,ys)+openYoung.map((l,i)=>area('text'+i,l)).join('')],
+ ['Le regard de l’équipe','<p>Notez les faits et les aides déjà utiles. Pour un indicateur que vous n’avez pas encore pu apprécier, choisissez « Non observé ».</p>'+area('initial',reviewLabels.initial)+area('commit',reviewLabels.commit)+groups(pro,'p',domains,7,ps)],
+ ['Les objectifs et la suite','<p>Choisissez avec le jeune les priorités du moment. Pour chaque objectif retenu, précisez l’aide prévue et un signe observable de réussite.</p>'+domains.map((d,i)=>'<details><summary>'+d+'</summary><p class="muted">Par exemple, '+objectiveExamples[i].toLowerCase()+'.</p>'+area('goal'+i,'Objectif choisi avec le jeune')+area('means'+i,'Aide prévue et adulte qui l’apporte')+area('evidence'+i,'À quoi verra-t-on que l’objectif est atteint ?')+'</details>').join('')+'<p>La première action convenue, c’est le petit pas que le jeune et l’adulte décident de faire juste après l’entretien. Indiquez si possible qui fait quoi et quand.</p>'+select('actionExample','Choisir un exemple',firstActionExamples).replace('name="actionExample"','id="actionExample"')+area('firstAction',reviewLabels.firstAction)+input('contact',reviewLabels.contact,'text',s.ref||'')+input('checkpoint',reviewLabels.checkpoint,'date')]
+];
+target.innerHTML='<form id="entryForm" class="card"><h2>Entretien d’entrée</h2><p id="entryProgress" role="status"></p><progress max="4" value="1" aria-label="Avancement de l’entretien"></progress>'+stages.map(([title,body],i)=>'<section data-entry-step="'+i+'"><h3>'+title+'</h3>'+body+'</section>').join('')+'<div class="actions" id="entryActions"></div><p id="entryMessage" role="status"></p></form>';
+const f=document.getElementById('entryForm'), actions=f.querySelector('#entryActions'), message=f.querySelector('#entryMessage');
+for(const field of f.elements){
+ if(!Object.hasOwn(existing,field.name))continue;
+ if(field.type==='radio')field.checked=field.value===existing[field.name];
+ else field.value=existing[field.name];
+}
+const actionExample=f.querySelector('#actionExample');
+actionExample.onchange=()=>{
+ const action=f.elements.firstAction;
+ if(actionExample.value){
+  action.value=action.value.trim()?action.value.trimEnd()+'\n'+actionExample.value:actionExample.value;
+  actionExample.value='';
+  action.focus();
+ }
+};
+let step=Number.isInteger(existing.step)?Math.min(3,Math.max(0,existing.step)):0;
+function draw(){
+ f.querySelectorAll('[data-entry-step]').forEach((section,i)=>section.hidden=i!==step);
+ f.querySelector('#entryProgress').textContent='Étape '+(step+1)+' sur '+stages.length;
+ f.querySelector('progress').value=step+1;
+ actions.innerHTML=(step>0?'<button type="button" data-step="-1">Précédent</button>':'')+'<button type="button" data-draft>Enregistrer le brouillon</button>'+(step<3?'<button type="button" class="primary" data-step="1">Continuer</button>':'<button class="primary">Valider le bilan d’entrée</button>');
+}
+function values(){return Object.fromEntries(new FormData(f))}
+actions.onclick=async e=>{
+ const b=e.target.closest('button');
+ if(!b)return;
+ if(b.hasAttribute('data-draft')){
+  const previous=s.entryDraft;
+  s.entryDraft={...values(),step};
+  if(await save()){message.textContent='Brouillon enregistré dans le dossier partagé.';savedMessage='';}
+  else s.entryDraft=previous;
+ }
+ if(b.dataset.step){
+  step+=Number(b.dataset.step);
+  message.textContent='';
+  draw();
+  target.scrollIntoView();
+ }
+};
+f.noValidate=true;
+form('entryForm',async v=>{
+ if(step!==3)return;
+ if(!v.date||v.date<s.start){
+  step=0;
+  draw();
+  message.textContent='Indiquez une date d’entretien égale ou postérieure à la date d’entrée du dossier.';
+  return;
+ }
+ if(!v.expect.trim()&&!young.some((_,i)=>v['y'+i])&&!openYoung.some((_,i)=>v['text'+i]?.trim())&&!['interests','obstacle','resource','mood','energy'].some(k=>v[k]?.trim())&&!v.initial.trim()&&!domains.some((_,i)=>v['goal'+i].trim())){
+  message.textContent='Renseignez une réponse du jeune, un constat de l’équipe ou un objectif avant de valider.';
+  return;
+ }
+ const previous=s.entryDraft;
+ delete s.entryDraft;
+ s.reviews.push({...v,kind:'Entrée',adult});
+ if(await save())render();
+ else{ s.reviews.pop(); s.entryDraft=previous; }
+});
+draw();
+target.scrollIntoView();
+}
+function showReview(s,kind){
+const entry=s.reviews.find(r=>r.kind==='Entrée');
+if(kind==='Entrée'){if(!entry)entryForm(s,document.querySelector('#review'));return}
+const closingNow=kind==='Sortie';
+const objectives=domains.map((d,i)=>'<div class="card"><b>'+d+'</b>'+(entry?.['goal'+i]?'<p>'+esc(entry['goal'+i])+'</p>'+(entry['means'+i]?'<small>Aide prévue · '+esc(entry['means'+i])+'</small>':'')+(entry['evidence'+i]?'<small>Signe de réussite prévu · '+esc(entry['evidence'+i])+'</small>':'')+select('status'+i,'État de l’objectif',['Atteint','Partiellement atteint','À poursuivre','Non évalué']):'<p class="muted">Aucun objectif fixé à l’entrée dans ce domaine.</p>')+area('team'+i,reviewLabels['team'+i])+(closingNow?area('voice'+i,reviewLabels['voice'+i]):'')+'</div>').join('');
+const target=document.querySelector('#review');
+target.innerHTML='<form class="card" id="reviewForm"><h2>Bilan · '+esc(kind)+'</h2>'+input('date','Date','date',today(),true)+'<h2>Auto-évaluation du jeune</h2><p>C’est ton ressenti. Il n’y a pas de bonne ou de mauvaise réponse.</p>'+groups(young,'y',youthDomains,3,ys)+scale('mood','Je me sens',['Bien','Moyen','Pas très bien'])+scale('energy','Mon énergie',['Haute','Moyenne','Basse'])+openYoung.map((l,i)=>area('text'+i,l)).join('')+(closingNow?area('gain',reviewLabels.gain):'')+'<h2>Évaluation de l’équipe</h2>'+groups(pro,'p',domains,7,ps)+'<h2>Objectifs et accompagnement</h2>'+objectives+(closingNow?select('action',reviewLabels.action,closing)+input('meeting',reviewLabels.meeting,'date')+area('support',reviewLabels.support):'')+'<button class="primary">Enregistrer le bilan</button></form>';
+target.scrollIntoView();
+form('reviewForm',async v=>{if(v.date<s.start||(entry&&v.date<entry.date)){alert('La date doit être postérieure ou égale à la date d’entrée.');return}if(kind==='Intermédiaire'&&(v.date.slice(0,7)===entry.date.slice(0,7)||s.reviews.some(r=>r.kind===kind&&r.date.slice(0,7)===v.date.slice(0,7)))){alert('Un bilan d’entrée ou intermédiaire existe déjà pour ce mois.');return}if(closingNow&&s.reviews.some(r=>r.date>v.date)){alert('La sortie doit suivre les bilans déjà enregistrés.');return}if(!Object.entries(v).some(([k,x])=>k!=='date'&&x.trim())){alert('Renseignez au moins une réponse ou un objectif.');return}s.reviews.push({...v,kind,adult});if(await save())render();else s.reviews.pop()});
+}
+const exportSections={bilans:'Bilans enregistrés',observations:'Observations enregistrées',semaines:'Synthèses hebdomadaires'};
+function pdfExports(s,p){
+ const counts={bilans:s.reviews.length,observations:s.obs.length,semaines:Object.keys(s.weeks).length};
+ p.innerHTML='<section class="card"><h2>Documents PDF</h2><p>Choisissez le dossier complet ou une rubrique. Dans la fenêtre d’impression, choisissez « Enregistrer au format PDF » ou « PDF → Enregistrer au format PDF ».</p>'+button('Dossier complet en PDF','pdf:all',true)+'</section><div class="grid">'+Object.entries(exportSections).map(([k,label])=>'<section class="card"><h2>'+label+'</h2><p>'+counts[k]+' enregistré(s)</p>'+button('PDF · '+label,'pdf:'+k)+'</section>').join('')+'</div>';
+}
+function printDossier(s,section){
+ const reviews=[...s.reviews].sort((a,b)=>a.date.localeCompare(b.date));
+ const weeks=Object.entries(s.weeks).sort(([a],[b])=>a.localeCompare(b));
+ const parts={
+  bilans:()=>reviews.map(r=>'<article class="card"><h3>'+esc(r.kind)+' · '+fmt(r.date)+' · '+esc(r.adult)+'</h3>'+reviewRead(r)+'</article>').join(''),
+  observations:()=>obsList(s.obs),
+  semaines:()=>weeks.map(([date,w])=>'<article class="card"><h3>Du '+fmt(date)+' au '+fmt(shift(date,6))+'</h3><p>'+esc(w.adult)+'</p><dl>'+[['win','Réussite à valoriser'],['watch','Point d’attention'],['next','Priorité commune pour la semaine suivante']].filter(([k])=>w[k]).map(([k,label])=>'<dt><b>'+label+'</b></dt><dd>'+esc(w[k])+'</dd>').join('')+'</dl></article>').join('')
+ };
+ const sections=section==='all'?Object.keys(exportSections):[section];
+ const report=document.querySelector('#pdfReport');
+ report.innerHTML='<h1>La Parenthèse</h1><h2>'+esc(s.name)+'</h2><p>'+esc(s.classe)+' · '+esc(s.group)+(s.module?' · Module '+esc(s.module):'')+'</p><p>Entrée le '+fmt(s.start)+(s.end?' · Fin prévue le '+fmt(s.end):'')+(s.ref?' · Référent : '+esc(s.ref):'')+'</p>'+(s.schedule?'<p>Rythme d’accueil : '+esc(s.schedule)+'</p>':'')+(section==='all'?historySection(s,true):'')+sections.map(k=>'<section><h2>'+exportSections[k]+'</h2>'+(parts[k]()||'<p>Aucune saisie enregistrée.</p>')+'</section>').join('');
+ const previousTitle=document.title;
+ document.title='La Parenthèse - '+s.name+' - '+(exportSections[section]||'Dossier complet');
+ report.removeAttribute('aria-hidden');
+ document.body.classList.add('print-dossier');
+ window.addEventListener('afterprint',()=>{
+  document.body.classList.remove('print-dossier');
+  report.setAttribute('aria-hidden','true');
+  report.innerHTML='';
+  document.title=previousTitle;
+ },{once:true});
+ window.print();
+}
+function evolution(s,p){
+const history=historySection(s);
+if(!s.reviews.length){p.innerHTML=history+'<p>Enregistrez un bilan pour afficher la comparaison.</p>';return}
+const reviews=[...s.reviews].sort((a,b)=>a.date.localeCompare(b.date));
+function table(title,items,prefix){return '<section class="card scroll"><h2>'+title+'</h2><table><thead><tr><th>Indicateur</th>'+reviews.map(r=>'<th>'+esc(r.kind)+'<br>'+fmt(r.date)+'</th>').join('')+'</tr></thead><tbody>'+items.map((l,i)=>'<tr><th scope="row">'+esc(l)+'</th>'+reviews.map(r=>'<td>'+esc(r[prefix+i]||'—')+'</td>').join('')+'</tr>').join('')+'</tbody></table></section>'}
+p.innerHTML=button('Imprimer / PDF','print')+history+table('Regard du jeune',young,'y')+table('Regard professionnel',pro.map(a=>a[0]),'p');
+}
+app.onclick=handle;session.onclick=handle;
+async function handle(e){
+if(busy)return;
+const action=e.target.closest('[data-action]')?.dataset.action;if(!action)return;
+if(action==='switch'){observationEdit=null;adult='';token='';version=null;state={students:[]};selected='';render();return}
+if(!adult)return;
+if(action==='deleteStudent'){
+ const index=state.students.findIndex(s=>s.id===selected);
+ if(index<0)return;
+ const student=state.students[index];
+ if(!confirm('Supprimer définitivement le dossier de '+student.name+' ? Les observations, synthèses, bilans et pièces jointes de cet élève seront aussi supprimés.'))return;
+ state.students.splice(index,1);
+ if(!await save()){state.students.splice(index,0,student);return}
+ selected='';
+ observationEdit=null;
+ savedMessage='Dossier supprimé.';
+ render();
+ return;
+}
+if(action==='refreshShared'){
+ if(!confirm('Actualiser les dossiers partagés ? Une saisie non enregistrée sera perdue.'))return;
+ busy=true;
+ app.inert=session.inert=true;
+ try{
+  if(!await loadShared(token)){alert('Ce compte ne peut plus accéder à l’espace partagé.');return}
+  observationEdit=null;
+  render();
+ }catch{alert('Actualisation impossible. Vérifiez la connexion ou reconnectez-vous.')}
+ finally{busy=false;app.inert=session.inert=false}
+ return;
+}
+if(action.startsWith('editObs')){
+ observationEdit=Number(action.slice(7));
+ render();
+ document.querySelector('#obs').scrollIntoView();
+ return;
+}
+if(action==='cancelObs'){observationEdit=null;render();return}
+observationEdit=null;
+if(action.startsWith('pdf:')){
+ const student=state.students.find(s=>s.id===selected);
+ if(student)printDossier(student,action.slice(4));
+ return;
+}
+if(action==='print'){window.print();return}
+if(action==='home')selected='';
+else if(action.startsWith('student')){selected=action.slice(7);tab=state.students.find(s=>s.id===selected).reviews.length?'observations':'bilans';period=monday(today())}
+else if(action.startsWith('filter'))filter=['Tous','Parcours','Respiration'][+action.slice(6)];
+else if(action.startsWith('review')){showReview(state.students.find(s=>s.id===selected),action.slice(6));return}
+else if(action==='prev'||action==='next')period=shift(period,action==='prev'?-7:7);
+else tab=action;
+render();
+}
+render();
+</script></html>
