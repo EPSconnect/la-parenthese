@@ -108,6 +108,28 @@ progress{width:100%;accent-color:var(--green)}
  .review-section dl{padding:.6rem}
 }
 
+
+.evo-intro{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;background:#eaf1e7;border:1px solid #d1dfd3;border-radius:14px;padding:1.05rem 1.2rem;margin-bottom:1rem}
+.evo-intro h2,.evo-card h3{margin:0;color:#173f33}
+.evo-intro p{margin:.35rem 0 0;max-width:72ch;color:#375347}
+.evo-card-head{display:flex;align-items:end;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.evo-card-head label{display:block;margin:0 0 .2rem;color:#375347;font-size:.83rem;font-weight:700}
+.evo-card-head select{width:100%;max-width:min(100%,22rem);margin:0}
+.evo-legend,.evo-rows{list-style:none;padding:0}
+.evo-legend{display:flex;flex-wrap:wrap;gap:.4rem .9rem;margin:.85rem 0;font-size:.82rem;color:#375347}
+.evo-legend li{display:flex;align-items:center;gap:.38rem}
+.evo-legend li span{width:.75rem;height:.75rem;border-radius:3px}
+.evo-rows{display:grid;gap:.65rem;margin:0}
+.evo-rows>li{padding:.65rem .75rem;background:#f7faf6;border:1px solid #dce6dd;border-radius:9px}
+.evo-row-head{display:flex;justify-content:space-between;gap:.25rem 1rem;flex-wrap:wrap;margin-bottom:.35rem;font-size:.9rem}
+.evo-row-head span{font-size:.8rem;color:#405a4e}
+.evo-bar{display:flex;gap:2px;overflow:hidden;border-radius:5px;height:1.4rem;background:#e5ebe5}
+.evo-bar>span{display:grid;place-items:center;min-width:0;overflow:hidden}
+.evo-bar>span>span{padding:0 .28rem;border-radius:4px;background:#fffffff0;color:#18372c;font-size:.76rem;font-weight:700}
+.evo-bar--empty{border:1px dashed #aac0b1;background:#f7faf6}
+.evo-detail summary{font-weight:700;color:#173f33}
+.evo-detail section{margin-top:.9rem}
+
 .auteuil-card{display:inline-flex;align-items:center;gap:10px;margin-top:16px;padding:8px 12px 8px 8px;border:1px solid #e6d8dc;border-radius:12px;background:#fff;color:#453940;font-size:.82rem;font-weight:600}
 .auteuil-card img{display:block;width:44px;height:44px;border-radius:4px}
 .auteuil-footer{display:flex;justify-content:flex-end;align-items:center;gap:8px;width:min(100%,1180px);margin:0 auto;padding:0 24px 18px;color:#63575c;font-size:.76rem}
@@ -764,17 +786,18 @@ function pdfReportData(student,section,draftTitle=''){
    ['Pièces jointes',history.files.map(f=>f.name).join('\n')]
   ])}]});
  }
- if(section==='evolution'){
+ if(section==='evolution'&&reviews.length){
   for(const [title,items,prefix] of [['Regard du jeune',young,'y'],['Regard professionnel',pro.map(item=>item[0]),'p']]){
    sections.push({title,groups:[{answers:items.map((label,i)=>({
     label,value:reviews.map(r=>reviewHeading(r.kind)+' · '+fmt(r.date)+'  —  '+(r[prefix+i]||'—')).join('\n')
    }))}]});
   }
  }else if(single)sections.push({groups:reviewSections(single)});
- else for(const key of section==='all'?Object.keys(exportSections):[section]){
+ else if(section!=='evolution')for(const key of section==='all'?Object.keys(exportSections):[section]){
   sections.push({title:exportSections[key],blocks:parts[key]()});
  }
- return {title,name:student.name,details,sections,draft:Boolean(draftTitle)};
+ const charts=section==='evolution'?evolutionCharts(student).filter(chart=>chart.rows.length):[];
+ return {title,name:student.name,details,sections,charts,draft:Boolean(draftTitle)};
 }
 
 async function buildDossierPdf(report,library){
@@ -902,6 +925,50 @@ async function buildDossierPdf(report,library){
    y+=h+gap;
   }
  }
+ function chartSummary(chart){
+  const palette=evolutionColors(chart).map(hex=>{
+   const value=Number.parseInt(hex.slice(1),16);
+   return rgb((value>>16)/255,((value>>8)&255)/255,(value&255)/255);
+  });
+  const legend=()=>{
+   let x=margin, baseline=y+10;
+   for(const [i,label] of chart.levels.entries()){
+    const size=measure(label,normal,9)+28;
+    if(x+size>margin+inner){x=margin;baseline+=16}
+    rect(x,baseline-8,8,8,palette[i]);
+    draw(label,x+12,baseline,normal,9,ink);
+    x+=size;
+   }
+   y=baseline+10;
+  };
+  band(chart.title,2,105);
+  legend();
+  for(const row of chart.rows){
+   if(y+53>bottom){pageStart();band(chart.title+' (suite)',2,105);legend()}
+   rect(margin,y,inner,47,cream,border);
+   draw(row.label,margin+pad,y+14,bold,10,green);
+   const label=evolutionRowLabel(chart,row);
+   draw(label,margin+inner-pad-measure(label,normal,9),y+14,normal,9,muted);
+   const total=evolutionRowCount(row), barWidth=inner-2*pad;
+   let x=margin+pad;
+   rect(x,y+22,barWidth,15,sage);
+   if(total)row.counts.forEach((count,i)=>{
+    if(!count)return;
+    const w=barWidth*count/total;
+    rect(x,y+22,w,15,palette[i]);
+    const countText=String(count);
+    const textWidth=measure(countText,bold,8);
+    if(w>=textWidth+8){
+     const center=x+w/2;
+     rect(center-(textWidth+5)/2,y+24,textWidth+5,11,white);
+     draw(countText,center-textWidth/2,y+32,bold,8,ink);
+    }
+    x+=w;
+   });
+   y+=53;
+  }
+  y+=8;
+ }
  function groups(items){
   if(!items.some(group=>group.answers.length)){
    ensure(25);draw('Aucune réponse renseignée.',margin,y+12,normal,11,muted);y+=25;return;
@@ -925,6 +992,14 @@ async function buildDossierPdf(report,library){
  y+=coverHeight+13;
  metadata(report.details);
  y+=10;
+ if(report.charts.length){
+  band('Graphiques de suivi',1);
+  const explanation=wrap('Répartition des niveaux renseignés. Les réponses vides, les absences et « Non observé » sont exclus du calcul.',inner,normal,10);
+  ensure(explanation.length*14+10);
+  explanation.forEach((line,index)=>draw(line,margin,y+10+14*index,normal,10,muted));
+  y+=explanation.length*14+10;
+  report.charts.forEach(chartSummary);
+ }
  for(const section of report.sections){
   if(section.title)band(section.title,1);
   if(section.groups)groups(section.groups);
@@ -1005,12 +1080,115 @@ async function downloadDossier(student,section,draftTitle='',button){
  }
 }
 
-function evolution(s,p){
-const history=historySection(s);
-if(!s.reviews.length){p.innerHTML=history+'<p>Enregistrez un bilan pour afficher la comparaison.</p>';return}
-const reviews=[...s.reviews].sort((a,b)=>a.date.localeCompare(b.date));
-function table(title,items,prefix){return '<section class="card scroll"><h2>'+title+'</h2><table><thead><tr><th>Indicateur</th>'+reviews.map(r=>'<th>'+esc(r.kind)+'<br>'+fmt(r.date)+'</th>').join('')+'</tr></thead><tbody>'+items.map((l,i)=>'<tr><th scope="row">'+esc(l)+'</th>'+reviews.map(r=>'<td>'+esc(r[prefix+i]||'—')+'</td>').join('')+'</tr>').join('')+'</tbody></table></section>'}
-p.innerHTML=button('Télécharger l’évolution en PDF','pdf:evolution')+history+table('Regard du jeune',young,'y')+table('Regard professionnel',pro.map(a=>a[0]),'p');
+
+const evolutionPalettes={three:['#b86b49','#c39742','#327763'],four:['#b86b49','#c39742','#5b7e9e','#327763']};
+
+function evolutionCharts(student){
+ const reviews=[...student.reviews].sort((a,b)=>a.date.localeCompare(b.date));
+ function distribution(values,levels){
+  const counts=levels.map(()=>0);
+  for(const value of values){
+   const index=levels.indexOf(value);
+   if(index>=0)counts[index]++;
+  }
+  return counts;
+ }
+ function reviewChart(title,items,labels,prefix,groupSize,levels){
+  const makeRows=(start,end)=>reviews.map(review=>({
+   label:reviewHeading(review.kind)+' · '+fmt(review.date),
+   date:review.date,
+   counts:distribution(items.slice(start,end).map((_,i)=>review[prefix+(start+i)]),levels),
+   possible:end-start
+  }));
+  return {
+   title,levels,units:['critère renseigné','critères renseignés'],rows:makeRows(0,items.length),
+   empty:'Enregistrez un bilan pour afficher ce graphique.',
+   filters:labels.map((label,index)=>({label,rows:makeRows(index*groupSize,(index+1)*groupSize)}))
+  };
+ }
+ const weeks=new Map();
+ const levels=quick.slice(0,-1);
+ for(const observation of student.obs){
+  const week=monday(observation.date);
+  if(!weeks.has(week))weeks.set(week,[]);
+  if(observation.dynamic==='Absent')continue;
+  for(const slot of [1,2]){
+   const skill=observation['skill'+slot],level=observation['level'+slot];
+   if(skill&&level)weeks.get(week).push({domain:skill.split(' · ')[0],level});
+  }
+ }
+ const chronologicalWeeks=[...weeks].sort(([a],[b])=>a.localeCompare(b));
+ const observationRows=(domain='')=>chronologicalWeeks.map(([date,entries])=>{
+  const relevant=domain?entries.filter(item=>item.domain===domain):entries;
+  return {
+   label:'Semaine du '+fmt(date),date,
+   counts:distribution(relevant.map(item=>item.level),levels)
+  };
+ });
+ return [
+  reviewChart('Auto-évaluation du jeune',young,youthDomains,'y',3,ys),
+  reviewChart('Regard de l’équipe',pro,domains,'p',7,ps.slice(0,-1)),
+  {
+   title:'Compétences observées par semaine',levels,units:['niveau renseigné','niveaux renseignés'],
+   rows:observationRows(),empty:'Ajoutez une observation pour commencer le suivi hebdomadaire.',
+   filters:Object.keys(skills).map(label=>({label,rows:observationRows(label)}))
+  }
+ ];
+}
+
+function evolutionRowCount(row){
+ return row.counts.reduce((sum,count)=>sum+count,0);
+}
+function evolutionRowLabel(chart,row){
+ const total=evolutionRowCount(row);
+ if(!total)return 'Aucun niveau renseigné';
+ return (row.possible?total+' / '+row.possible:total)+' '+chart.units[total===1?0:1];
+}
+function evolutionColors(chart){
+ return chart.levels.length===3?evolutionPalettes.three:evolutionPalettes.four;
+}
+function evolutionBars(chart,rows){
+ if(!rows.length)return '<p class="muted">'+esc(chart.empty)+'</p>';
+ const palette=evolutionColors(chart);
+ return '<ul class="evo-rows">'+rows.map(row=>{
+  const total=evolutionRowCount(row);
+  const parts=row.counts.map((count,i)=>({count,label:chart.levels[i],color:palette[i]})).filter(part=>part.count);
+  return '<li><div class="evo-row-head"><strong>'+esc(row.label)+'</strong><span>'+esc(evolutionRowLabel(chart,row))+'</span></div>'+
+   (total?'<div class="evo-bar" role="img" aria-label="'+esc(parts.map(({label,count})=>label+' : '+count).join(', '))+'">'+
+    parts.map(({count,label,color})=>'<span style="flex:'+count+';background:'+color+'" title="'+esc(label+' : '+count)+'"><span aria-hidden="true">'+count+'</span></span>').join('')+'</div>':
+    '<div class="evo-bar evo-bar--empty" aria-hidden="true"></div>')+'</li>';
+ }).join('')+'</ul>';
+}
+function evolutionChartHtml(chart,index){
+ const id='evo-filter-'+index;
+ return '<section class="card evo-card"><div class="evo-card-head"><h3>'+esc(chart.title)+'</h3>'+
+  '<div><label for="'+id+'">Domaine</label><select id="'+id+'" data-evo-filter="'+index+'"><option value="">Tous les domaines</option>'+
+  chart.filters.map((filter,i)=>'<option value="'+i+'">'+esc(filter.label)+'</option>').join('')+'</select></div></div>'+
+  '<ul class="evo-legend">'+chart.levels.map((label,i)=>'<li><span style="background:'+evolutionColors(chart)[i]+'" aria-hidden="true"></span>'+esc(label)+'</li>').join('')+'</ul>'+
+  '<div data-evo-bars="'+index+'" aria-live="polite">'+evolutionBars(chart,chart.rows)+'</div></section>';
+}
+
+function evolution(student,panel){
+ const charts=evolutionCharts(student);
+ const reviews=[...student.reviews].sort((a,b)=>a.date.localeCompare(b.date));
+ const table=(title,items,prefix)=>'<section class="card scroll"><h3>'+title+'</h3><table><thead><tr><th>Indicateur</th>'+
+  reviews.map(review=>'<th scope="col">'+esc(review.kind)+'<br>'+fmt(review.date)+'</th>').join('')+
+  '</tr></thead><tbody>'+items.map((label,i)=>'<tr><th scope="row">'+esc(label)+'</th>'+
+   reviews.map(review=>'<td>'+esc(review[prefix+i]||'—')+'</td>').join('')+'</tr>').join('')+'</tbody></table></section>';
+ panel.innerHTML='<section class="evo-intro"><div><h2>Évolution du jeune</h2>'+
+  '<p>Chaque barre montre la répartition des niveaux à une date. Les chiffres indiquent combien de fois chaque niveau a été renseigné. Les réponses vides, les absences et « Non observé » sont exclus du calcul.</p></div>'+
+  (charts.some(chart=>chart.rows.length)?button('Télécharger l’évolution en PDF','pdf:evolution',true):'')+'</section>'+
+  charts.map(evolutionChartHtml).join('')+
+  (reviews.length?'<details class="card evo-detail"><summary>Voir le détail des bilans par indicateur</summary>'+
+   table('Auto-évaluation du jeune',young,'y')+table('Regard de l’équipe',pro.map(item=>item[0]),'p')+'</details>':'')+
+  historySection(student);
+ panel.onchange=event=>{
+  const index=event.target.dataset.evoFilter;
+  if(index===undefined)return;
+  const chart=charts[index];
+  const rows=event.target.value===''?chart.rows:chart.filters[Number(event.target.value)].rows;
+  panel.querySelector('[data-evo-bars="'+index+'"]').innerHTML=evolutionBars(chart,rows);
+ };
 }
 app.onclick=handle;session.onclick=handle;
 async function handle(e){
