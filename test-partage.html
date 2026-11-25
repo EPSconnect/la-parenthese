@@ -503,7 +503,7 @@ const entry=s.reviews.find(r=>r.kind==='Entrée');
 const closure=s.reviews.some(r=>r.kind==='Sortie');
 const types=!entry?['Entrée']:closure?[]:s.group==='Parcours'?['Intermédiaire','Sortie']:['Sortie'];
 const pending=s.group==='Parcours'&&entry&&!closure;
-p.innerHTML='<div class="actions">'+types.map(k=>button({'Entrée':s.entryDraft||readReviewDraft(s,k)?'Reprendre le brouillon':'Commencer le bilan d’entrée','Intermédiaire':readReviewDraft(s,k)?'Reprendre le bilan intermédiaire':'Bilan intermédiaire','Sortie':readReviewDraft(s,k)?'Reprendre le bilan de sortie':'Bilan de sortie'}[k],'review'+k,true)).join('')+'</div>'+(pending?'<p class="muted">Un bilan intermédiaire par mois pendant le parcours.</p>':'')+'<div id="review"></div><h2>Bilans enregistrés</h2>'+([...s.reviews].reverse().map(r=>'<details><summary>'+esc(r.kind)+' · '+fmt(r.date)+' · '+esc(r.adult)+'</summary>'+reviewRead(r)+'</details>').join('')||'<p class="muted">Aucun bilan enregistré.</p>');
+p.innerHTML='<div class="actions">'+types.map(k=>button({'Entrée':s.entryDraft||readReviewDraft(s,k)?'Reprendre le brouillon':'Commencer le bilan d’entrée','Intermédiaire':readReviewDraft(s,k)?'Reprendre le bilan intermédiaire':'Bilan intermédiaire','Sortie':readReviewDraft(s,k)?'Reprendre le bilan de sortie':'Bilan de sortie'}[k],'review'+k,true)).join('')+'</div>'+(pending?'<p class="muted">Un bilan intermédiaire par mois pendant le parcours.</p>':'')+'<div id="review"></div><h2>Bilans enregistrés</h2>'+(s.reviews.map((r,index)=>'<details><summary>'+esc(r.kind)+' · '+fmt(r.date)+' · '+esc(r.adult)+'</summary><div class="actions">'+button('Télécharger ce bilan en PDF','pdfReview:'+index,true)+'</div>'+reviewRead(r)+'</details>').reverse().join('')||'<p class="muted">Aucun bilan enregistré.</p>');
 }
 function reviewRead(r){
 const content=Object.entries(r).filter(([k,v])=>v&&!['kind','date','adult'].includes(k));
@@ -753,6 +753,12 @@ if(action.startsWith('editObs')){
 }
 if(action==='cancelObs'){observationEdit=null;render();return}
 observationEdit=null;
+if(action.startsWith('pdfReview:')){
+ const student=state.students.find(s=>s.id===selected);
+ const review=student?.reviews[Number(action.slice('pdfReview:'.length))];
+ if(review)printDossier({...student,reviews:[review]},'bilans');
+ return;
+}
 if(action.startsWith('pdf:')){
  const student=state.students.find(s=>s.id===selected);
  if(student)printDossier(student,action.slice(4));
