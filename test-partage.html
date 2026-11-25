@@ -240,10 +240,16 @@ function reviewConflict(student,review){
   return 'La sortie doit suivre les bilans déjà enregistrés.';
  return '';
 }
+function sameFlatRecord(left,right){
+ if(left===right)return true;
+ if(!left||!right)return false;
+ const entries=Object.entries(left);
+ return entries.length===Object.keys(right).length&&
+  entries.every(([key,value])=>Object.hasOwn(right,key)&&right[key]===value);
+}
 async function saveReview(original,review,status){
- const originalDraft=JSON.stringify(original.entryDraft);
- const sameReview=stored=>Object.keys(review).length===Object.keys(stored).length&&
-  Object.entries(review).every(([key,value])=>stored[key]===value);
+ const originalDraft=original.entryDraft;
+ const sameReview=stored=>sameFlatRecord(review,stored);
  const read=async()=>{
   const rows=await api(dossiersPath+'&select=version,payload',token);
   const row=rows[0];
@@ -262,7 +268,7 @@ async function saveReview(original,review,status){
    const conflict=reviewConflict(student,review);
    if(conflict)throw Error(conflict);
    student.reviews.push(review);
-   if(review.kind==='Entrée'&&JSON.stringify(student.entryDraft)===originalDraft)delete student.entryDraft;
+   if(review.kind==='Entrée'&&sameFlatRecord(student.entryDraft,originalDraft))delete student.entryDraft;
 
    try{
     await api(dossiersPath+'&version=eq.'+latest.version+'&select=version',token,{
@@ -613,25 +619,42 @@ const firstActionExamples=[
  'Préparer ensemble le matériel pour la prochaine séance'
 ];
 async function checkpointEntry(student,draft,expectedDraft){
- const rows=await api(dossiersPath+'&select=version,payload',token);
- const row=rows[0];
- if(!row||!validBackup(row.payload))throw Error('Dossier inaccessible.');
- const current=row.payload.students.find(item=>item.id===student.id);
- if(!current||current.reviews.some(review=>review.kind==='Entrée'))
-  throw Error('Le dossier a changé. Votre saisie reste dans cet onglet.');
- if(JSON.stringify(current.entryDraft)!==JSON.stringify(expectedDraft))
-  throw Error('Un brouillon a été modifié dans un autre onglet. Votre saisie reste dans cet onglet.');
- current.entryDraft=draft;
- const updated=await api(dossiersPath+'&version=eq.'+row.version+'&select=version',token,{
-  method:'PATCH',headers:{Prefer:'return=representation'},
-  body:JSON.stringify({version:row.version+1,payload:row.payload})
- });
- if(updated.length!==1)throw Error('Le dossier a changé pendant l’enregistrement.');
+ const read=async()=>{
+  const rows=await api(dossiersPath+'&select=version,payload',token);
+  const row=rows[0];
+  if(!row||!validBackup(row.payload))throw Error('Dossier inaccessible.');
+  const current=row.payload.students.find(item=>item.id===student.id);
+  if(!current||current.reviews.some(review=>review.kind==='Entrée'))
+   throw Error('Le dossier a changé. Votre saisie reste dans cet onglet.');
+  return {row,current};
+ };
+ let {row,current}=await read();
+ if(!sameFlatRecord(current.entryDraft,draft)){
+  if(!sameFlatRecord(current.entryDraft,expectedDraft))
+   throw Error('Un brouillon a été modifié dans un autre onglet. Votre saisie reste dans cet onglet.');
+  current.entryDraft=draft;
+  let updated;
+  try{
+   updated=await api(dossiersPath+'&version=eq.'+row.version+'&select=version',token,{
+    method:'PATCH',headers:{Prefer:'return=representation'},
+    body:JSON.stringify({version:row.version+1,payload:row.payload})
+   });
+  }catch(error){
+   if(error.message==='401'||error.message==='403')throw error;
+  }
+  if(updated?.length===1)row.version=updated[0].version;
+  else{
+   // A lost response can follow a successful write. Confirm what is stored before asking for a retry.
+   ({row,current}=await read());
+   if(!sameFlatRecord(current.entryDraft,draft))
+    throw Error('Le dossier a changé pendant l’enregistrement.');
+  }
+ }
  // Keep the active form's student object, while synchronizing all other data.
  Object.assign(student,current);
  row.payload.students[row.payload.students.indexOf(current)]=student;
  state=row.payload;
- version=updated[0].version;
+ version=row.version;
 }
 function downloadReviewDraft(student,values,kind,button){
  const review={...values,kind,adult};
