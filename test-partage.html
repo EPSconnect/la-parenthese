@@ -85,6 +85,26 @@ progress{width:100%;accent-color:var(--green)}
 }
 @media (max-width:390px){header{align-items:flex-start;flex-direction:column;gap:7px}#session{justify-content:flex-start}}
 @media print{header,nav,button,.notice{display:none}main{margin:0}.card,details{break-inside:avoid}.card{box-shadow:none}}
+
+.review-section{margin:1rem 0 1.25rem}
+.review-section h4{margin:0;padding:.55rem .75rem;border:1px solid #dce6dd;border-radius:8px 8px 0 0;background:#edf3ea;color:#173f33;font-size:.98rem}
+.review-section dl{margin:0}
+.answer-row{padding:.6rem .75rem;border:1px solid #e0e8e1;border-top:0;background:#fff}
+.answer-row:nth-child(even){background:#f6f8f4}
+.answer-row dt{font-weight:700;color:#173b30}
+.answer-row dd{margin:.2rem 0 0;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+.report-heading{border-bottom:2px solid #2d5d4b;padding-bottom:.5rem;margin-bottom:1rem}
+.report-heading h3{margin:0 0 .2rem;font-size:1.2rem}
+.report-heading p{margin:0}
+@media print{
+ #pdfReport .review-card{padding:0;border:0}
+ #pdfReport .review-section h4{break-after:avoid;padding:5px 7px;border-color:#8da69a;background:#fff;font-size:11pt}
+ #pdfReport .review-section{margin:11px 0;break-inside:auto}
+ #pdfReport .review-section dl{margin:0}
+ #pdfReport .answer-row{padding:4px 7px;background:#fff}
+ #pdfReport .answer-row dd{margin:2px 0 0;font-size:10pt;orphans:2;widows:2}
+ #pdfReport .answer-row dt{break-after:avoid;overflow-wrap:anywhere}
+}
 #pdfReport{display:none}
 @media print{
  @page{size:A4;margin:15mm}
@@ -505,9 +525,38 @@ const types=!entry?['Entrée']:closure?[]:s.group==='Parcours'?['Intermédiaire'
 const pending=s.group==='Parcours'&&entry&&!closure;
 p.innerHTML='<div class="actions">'+types.map(k=>button({'Entrée':s.entryDraft||readReviewDraft(s,k)?'Reprendre le brouillon':'Commencer le bilan d’entrée','Intermédiaire':readReviewDraft(s,k)?'Reprendre le bilan intermédiaire':'Bilan intermédiaire','Sortie':readReviewDraft(s,k)?'Reprendre le bilan de sortie':'Bilan de sortie'}[k],'review'+k,true)).join('')+'</div>'+(pending?'<p class="muted">Un bilan intermédiaire par mois pendant le parcours.</p>':'')+'<div id="review"></div><h2>Bilans enregistrés</h2>'+(s.reviews.map((r,index)=>'<details><summary>'+esc(r.kind)+' · '+fmt(r.date)+' · '+esc(r.adult)+'</summary><div class="actions">'+button('Télécharger ce bilan en PDF','pdfReview:'+index,true)+'</div>'+reviewRead(r)+'</details>').reverse().join('')||'<p class="muted">Aucun bilan enregistré.</p>');
 }
-function reviewRead(r){
-const content=Object.entries(r).filter(([k,v])=>v&&!['kind','date','adult'].includes(k));
-return '<dl>'+content.map(([k,v])=>{const m=k.match(/^([yp])([0-9]+)$/);const label=m?(m[1]==='y'?young[+m[2]]:pro[+m[2]][0]):reviewLabels[k]||k;return '<dt><b>'+esc(label)+'</b></dt><dd>'+esc(v)+'</dd>'}).join('')+'</dl>';
+function reviewRead(review){
+ const sections=[];
+ const used=new Set();
+ const addSection=(title,keys)=>{
+  const answers=[];
+  for(const key of keys){
+   if(used.has(key))continue;
+   used.add(key);
+   const value=review[key];
+   if(value==null||String(value).trim()==='')continue;
+   const match=key.match(/^([yp])([0-9]+)$/);
+   const item=match?(match[1]==='y'?young[Number(match[2])]:pro[Number(match[2])]?.[0]):null;
+   const label=item||reviewLabels[key]||key;
+   const display=['meeting','checkpoint'].includes(key)&&/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(value)?fmt(value):value;
+   answers.push('<div class="answer-row"><dt>'+esc(label)+'</dt><dd>'+esc(display)+'</dd></div>');
+  }
+  if(answers.length)sections.push('<section class="review-section"><h4>'+esc(title)+'</h4><dl>'+answers.join('')+'</dl></section>');
+ };
+ const indexed=(prefix,start,length)=>Array.from({length},(_,i)=>prefix+(start+i));
+ addSection('Cadre de l’accueil',['present','family','origin','reason','adhesion','rhythm','logistics']);
+ addSection('Parole du jeune',['expect','interests','obstacle','resource','mood','energy',...indexed('text',0,openYoung.length),'gain']);
+ youthDomains.forEach((title,index)=>addSection('Auto-évaluation · '+title,indexed('y',index*3,3)));
+ addSection('Constats de l’équipe',['initial','commit']);
+ domains.forEach((title,index)=>addSection('Équipe · '+title,[
+  ...indexed('p',index*7,7),...['goal','means','evidence','status','team','voice'].map(prefix=>prefix+index)
+ ]));
+ addSection('Actions et suivi',['firstAction','contact','checkpoint','action','meeting','support']);
+ addSection('Autres réponses',Object.keys(review).filter(key=>!['kind','date','adult'].includes(key)));
+ return '<div class="review-answers">'+(sections.join('')||'<p>Aucune réponse renseignée.</p>')+'</div>';
+}
+function reviewHeading(kind){
+ return ({'Entrée':'Bilan d’entrée','Intermédiaire':'Bilan intermédiaire','Sortie':'Bilan de sortie'})[kind]||'Bilan';
 }
 const reviewLabels={mood:'Ressenti',energy:'Énergie',expect:'Attentes du jeune',gain:'Ce que le jeune retient',origin:'Origine de la demande',reason:'Motifs et contexte de l’accueil',initial:'Freins et points d’appui',commit:'Engagements et aménagements',action:'Préconisation de sortie',meeting:'Date de réunion avec l’établissement et la famille',support:'Points de vigilance et aménagements à maintenir'};
 openYoung.forEach((l,i)=>reviewLabels['text'+i]=l);
@@ -688,7 +737,7 @@ function printDossier(s,section,draftTitle=''){
  const reviews=[...s.reviews].sort((a,b)=>a.date.localeCompare(b.date));
  const weeks=Object.entries(s.weeks).sort(([a],[b])=>a.localeCompare(b));
  const parts={
-  bilans:()=>reviews.map(r=>'<article class="card"><h3>'+esc(r.kind)+' · '+fmt(r.date)+' · '+esc(r.adult)+'</h3>'+reviewRead(r)+'</article>').join(''),
+  bilans:()=>reviews.map(r=>'<article class="card review-card"><div class="report-heading"><h3>'+reviewHeading(r.kind)+'</h3><p>'+fmt(r.date)+(r.adult?' · '+esc(r.adult):'')+'</p></div>'+reviewRead(r)+'</article>').join(''),
   observations:()=>obsList(s.obs),
   semaines:()=>weeks.map(([date,w])=>'<article class="card"><h3>Du '+fmt(date)+' au '+fmt(shift(date,6))+'</h3><p>'+esc(w.adult)+'</p><dl>'+[['win','Réussite à valoriser'],['watch','Point d’attention'],['next','Priorité commune pour la semaine suivante']].filter(([k])=>w[k]).map(([k,label])=>'<dt><b>'+label+'</b></dt><dd>'+esc(w[k])+'</dd>').join('')+'</dl></article>').join('')
  };
