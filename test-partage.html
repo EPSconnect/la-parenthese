@@ -130,6 +130,21 @@ progress{width:100%;accent-color:var(--green)}
 .evo-detail summary{font-weight:700;color:#173f33}
 .evo-detail section{margin-top:.9rem}
 
+
+.guided-answer{margin:.9rem 0;padding:.8rem .95rem .95rem;border:1px solid #cdded0;border-radius:12px;background:#f7faf5}
+.guided-answer legend{padding:0 .35rem;color:#183e31;font-size:1rem;font-weight:750}
+.guided-choices{margin:.3rem 0 .65rem;padding:.55rem .7rem;background:#fff;border:1px solid #d7e4d8;border-radius:8px}
+.guided-choices summary{color:#255844;font-size:.9rem;font-weight:700;cursor:pointer}
+.guided-choices summary:focus-visible{outline:2px solid #276c52;outline-offset:3px}
+.guided-hint{margin:.35rem 0 .55rem;color:#405a4d;font-size:.85rem}
+.guided-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:.4rem;margin:.45rem 0 .15rem}
+.guided-options label{display:flex;align-items:center;gap:.55rem;margin:0;padding:.45rem .6rem;border:1px solid #d9e5da;border-radius:8px;background:#fff;font-size:.88rem;font-weight:500;cursor:pointer}
+.guided-options label:has(:checked){border-color:#57866c;background:#e6f1e7}
+.guided-options input[type=checkbox]{width:1rem;height:1rem;min-height:0;margin:0;flex:none;accent-color:#235c46}
+.guided-text-label{margin:.25rem 0 0;color:#375548;font-size:.85rem}
+.guided-answer textarea{background:#fff}
+.review-goal-context{white-space:pre-wrap;overflow-wrap:anywhere}
+
 .auteuil-card{display:inline-flex;align-items:center;gap:10px;margin-top:16px;padding:8px 12px 8px 8px;border:1px solid #e6d8dc;border-radius:12px;background:#fff;color:#453940;font-size:.82rem;font-weight:600}
 .auteuil-card img{display:block;width:44px;height:44px;border-radius:4px}
 .auteuil-footer{display:flex;justify-content:flex-end;align-items:center;gap:8px;width:min(100%,1180px);margin:0 auto;padding:0 24px 18px;color:#63575c;font-size:.76rem}
@@ -516,6 +531,7 @@ function bindReviewDraft(form,s,kind,initial,getStep,status){
   if(field.type==='radio')field.checked=field.value===existing[field.name];
   else field.value=existing[field.name];
  }
+ bindGuidedAnswers(form);
  if(local)status.textContent='Saisie en cours récupérée dans cet onglet. Validez le bilan pour l’enregistrer dans le dossier partagé.';
  const remember=()=>{
   const key=reviewDraftKey(s,kind);
@@ -544,7 +560,7 @@ function reviewSections(review){
   for(const key of keys){
    if(used.has(key))continue;
    used.add(key);
-   const value=review[key];
+   const value=reviewAnswer(review,key);
    if(value==null||String(value).trim()==='')continue;
    const match=key.match(/^([yp])([0-9]+)$/);
    const item=match?(match[1]==='y'?young[Number(match[2])]:pro[Number(match[2])]?.[0]):null;
@@ -563,7 +579,7 @@ function reviewSections(review){
   ...indexed('p',index*7,7),...['goal','means','evidence','status','team','voice'].map(prefix=>prefix+index)
  ]));
  addSection('Actions et suivi',['firstAction','contact','checkpoint','action','meeting','support']);
- addSection('Autres réponses',Object.keys(review).filter(key=>!['kind','date','adult'].includes(key)));
+ addSection('Autres réponses',Object.keys(review).filter(key=>!['kind','date','adult'].includes(key)&&!key.startsWith('choices_')));
  return sections;
 }
 function reviewRead(review){
@@ -621,30 +637,127 @@ function downloadReviewDraft(student,values,kind,button){
  const review={...values,kind,adult};
  return downloadDossier({...student,reviews:[review]},'bilans','Brouillon du bilan',button);
 }
+
+const guidedReviewOptions={
+ expect:['Reprendre confiance en moi','Me sentir mieux au collège','Réussir à me remettre au travail','Découvrir des métiers','Trouver une façon de gérer les moments difficiles'],
+ interests:['Faire du sport ou bouger','Créer ou fabriquer quelque chose','Faire une interview ou un reportage','Travailler sur un projet en groupe','Découvrir un métier ou visiter un lieu de travail'],
+ obstacle:['Me mettre au travail','Comprendre les consignes','Rester concentré','Oser poser une question','Les relations avec les autres','Revenir après une absence'],
+ resource:['Une consigne courte ou un exemple','Faire une pause quand j’en ai besoin','Travailler avec quelqu’un','Parler à un adulte du collège','Parler à quelqu’un de ma famille','Avoir plus de temps'],
+ text0:['J’ai réussi quelque chose de difficile','J’ai participé même si j’hésitais','J’ai demandé de l’aide','J’ai aidé quelqu’un','J’ai terminé ce que j’avais commencé'],
+ text1:['M’organiser et préparer mes affaires','Rester concentré plus longtemps','Participer davantage','Mieux réagir quand je suis énervé','Oser dire quand je ne comprends pas'],
+ text2:['Comprendre une consigne','M’organiser dans mon travail','M’entendre avec les autres','Trouver un adulte à qui parler','Trouver des idées pour mon orientation'],
+ text3:['Arriver avec mon matériel','Commencer une tâche et aller au bout','Prendre la parole une fois','Demander de l’aide quand je bloque','Découvrir un métier qui m’intéresse'],
+ gain:['Je sais mieux demander de l’aide','Je sais ce qui m’aide à me mettre au travail','J’ose davantage participer','J’ai trouvé une façon de me calmer','J’ai une idée pour la suite'],
+ reason:['Reprise après des absences','Difficultés à se mettre au travail','Besoin d’un temps d’accueil aménagé','Besoin d’un appui dans les relations au collège','Besoin de construire un projet d’orientation'],
+ rhythm:['Créneaux fixes dans la semaine','Maintien des cours principaux','Reprise progressive de certains cours','Temps d’accueil avant la mise au travail','Point régulier avec le référent'],
+ logistics:['Matériel à préparer avec le jeune','Salle d’accueil à repérer','Horaires à transmettre à la famille','Transport à confirmer','Restauration à organiser'],
+ initial:['Se met au travail avec une consigne courte','S’engage dans une activité concrète','S’appuie sur un adulte de confiance','A besoin d’aide pour s’organiser','A besoin d’un cadre prévisible','A besoin de temps pour rejoindre le groupe'],
+ commit:['Fixer un créneau régulier avec le référent','Prévoir une tâche courte pour démarrer','Convenir d’un signal pour demander de l’aide','Prévoir un espace et un temps de pause','Faire un point régulier avec la famille'],
+ support:['Maintenir le point régulier avec le référent','Poursuivre les consignes courtes et écrites','Maintenir la possibilité d’une pause convenue','Préparer les changements d’emploi du temps','Faire un point avec la famille après la sortie']
+};
+const guidedDomainOptions={
+ goal:[
+  ['Demander une pause avant de quitter l’activité','Identifier un adulte à qui parler','Nommer une réussite après un atelier'],
+  ['Tenir un rôle dans un atelier collectif','Écouter l’autre jusqu’au bout','Exprimer un désaccord sans interrompre'],
+  ['Commencer une tâche avec une consigne écrite','Préparer son matériel avant l’activité','Terminer une tâche courte'],
+  ['Poser une question sur un métier','Tenir un rôle dans un projet','Présenter ce que j’ai découvert']
+ ],
+ means:[
+  ['Convenir d’un signal de pause','Identifier un lieu calme et un adulte disponible'],
+  ['Préparer les rôles à l’avance','Proposer un binôme pour commencer'],
+  ['Donner un exemple avant de commencer','Utiliser une liste d’étapes ou de matériel'],
+  ['Préparer une question ensemble','Proposer deux activités à essayer']
+ ],
+ evidence:[
+  ['Le jeune demande une pause avec le signal convenu','Le jeune nomme un adulte qu’il peut solliciter'],
+  ['Le jeune tient le rôle convenu jusqu’à la fin de l’atelier','Le jeune attend son tour pour parler'],
+  ['Le jeune commence à partir de la consigne donnée','Le jeune termine la tâche définie'],
+  ['Le jeune pose une question pendant l’activité','Le jeune décrit une découverte ou une prochaine étape']
+ ],
+ team:[
+  ['Sollicite un adulte si nécessaire','Utilise une pause convenue','Identifie ses réussites'],
+  ['Prend sa place dans le groupe','Écoute les autres','Tient le rôle convenu'],
+  ['Se met au travail avec moins d’aide','Prépare son matériel','Termine la tâche prévue'],
+  ['S’engage dans un projet','Pose des questions sur un métier','Identifie une prochaine étape']
+ ],
+ voice:[
+  ['Je sais mieux dire quand j’ai besoin d’une pause','Je sais à qui demander de l’aide'],
+  ['Je trouve plus facilement ma place dans un groupe','J’arrive mieux à écouter les autres'],
+  ['J’arrive mieux à me mettre au travail','Je sais ce qui m’aide quand je bloque'],
+  ['J’ai découvert quelque chose qui me plaît','J’ai une idée pour la suite']
+ ]
+};
+
+function guidedArea(name,label,{value='',hint='',youth=false}={}){
+ const domain=name.match(/^(goal|means|evidence|team|voice)([0-3])$/);
+ const options=domain?guidedDomainOptions[domain[1]][Number(domain[2])]:
+  name==='firstAction'?firstActionExamples:guidedReviewOptions[name];
+ const id='guided-'+name;
+ const alternatives=youth?['Je ne sais pas encore','Je préfère en parler plus tard']:[];
+ return '<fieldset class="guided-answer" data-guided-answer><legend>'+esc(label)+'</legend>'+
+  (hint?'<p class="guided-hint">'+esc(hint)+'</p>':'')+
+  '<details class="guided-choices"><summary>'+(youth?'J’ai besoin d’idées':'Voir les propositions')+'<span data-choice-count></span></summary>'+
+  '<p class="guided-hint">'+(youth?'Coche ce qui te ressemble. Tu peux cocher plusieurs idées.':'Vous pouvez cocher plusieurs propositions.')+'</p>'+
+  '<div class="guided-options">'+[...options,...alternatives].map((option,index)=>'<label><input type="checkbox" value="'+esc(option)+'"'+(index>=options.length?' data-choice-alternative':'')+'><span>'+esc(option)+'</span></label>').join('')+
+  '</div></details><input type="hidden" name="choices_'+name+'"><label class="guided-text-label" for="'+id+'">'+(youth?'Avec tes mots, si tu veux':'Précision libre (facultatif)')+'</label>'+
+  '<textarea id="'+id+'" name="'+name+'">'+esc(value)+'</textarea></fieldset>';
+}
+function recordedChoices(value){
+ if(!value)return [];
+ try{
+  const choices=JSON.parse(value);
+  return Array.isArray(choices)?choices.filter(choice=>typeof choice==='string'&&choice.trim()):[];
+ }catch{return []}
+}
+function reviewAnswer(review,key){
+ const choices=recordedChoices(review['choices_'+key]);
+ const text=review[key]??'';
+ if(!choices.length)return text;
+ return 'Choix cochés\n'+choices.map(choice=>'• '+choice).join('\n')+
+  (text.trim()?'\n\nPrécision libre\n'+text:'');
+}
+function bindGuidedAnswers(form){
+ for(const field of form.querySelectorAll('[data-guided-answer]')){
+  const storage=field.querySelector('input[type="hidden"]');
+  const choices=[...field.querySelectorAll('input[type="checkbox"]')];
+  const count=field.querySelector('[data-choice-count]');
+  const selected=recordedChoices(storage.value);
+  choices.forEach(choice=>{choice.checked=selected.includes(choice.value)});
+  function updateCount(total){count.textContent=total?' · '+total+' sélectionné'+(total>1?'s':''):''}
+  updateCount(selected.length);
+  if(selected.length)field.querySelector('details').open=true;
+  field.addEventListener('input',event=>{
+   const choice=event.target;
+   if(!choices.includes(choice))return;
+   if(choice.checked)for(const other of choices){
+    if(other!==choice&&(choice.hasAttribute('data-choice-alternative')||other.hasAttribute('data-choice-alternative')))other.checked=false;
+   }
+   const values=choices.filter(item=>item.checked).map(item=>item.value);
+   storage.value=values.length?JSON.stringify(values):'';
+   updateCount(values.length);
+  });
+ }
+}
+
 function entryForm(s,target){
 const existing=s.entryDraft||{};
-const objectiveExamples=['Demander une pause avant de quitter l’activité','Tenir un rôle pendant un atelier collectif','Commencer une tâche avec une consigne écrite','Poser une question sur un métier pendant une visite'];
 const stages=[
- ['Cadre de l’accueil',input('date','Date de l’entretien','date',today(),true)+'<small>L’entretien peut avoir lieu avant l’entrée dans le dispositif.</small>'+input('present',reviewLabels.present)+select('family',reviewLabels.family,['Oui','Non','À vérifier'])+select('origin',reviewLabels.origin,['Équipe éducative collège','Vie scolaire / CPE','Famille / Jeune','Commission / Partenaire'])+area('reason',reviewLabels.reason)+select('adhesion',reviewLabels.adhesion,['Favorable','À accompagner','Réticente'])+area('rhythm',reviewLabels.rhythm,s.schedule||'')+area('logistics',reviewLabels.logistics)],
- ['La parole du jeune','<p>Tu peux répondre à ton rythme. C’est ton ressenti.</p>'+area('expect','Qu’est-ce que tu aimerais que La Parenthèse t’apporte ?')+area('interests','Qu’est-ce que tu aimes faire ou aimerais essayer ici ?')+area('obstacle','Qu’est-ce qui est difficile pour toi au collège en ce moment ?')+area('resource','Qu’est-ce qui t’aide quand c’est difficile ? À qui peux-tu parler ?')+scale('mood','Je me sens',['Bien','Moyen','Pas très bien'])+scale('energy','Mon énergie',['Haute','Moyenne','Basse'])+groups(young,'y',youthDomains,3,ys)+openYoung.map((l,i)=>area('text'+i,l)).join('')],
- ['Le regard de l’équipe','<p>Notez les faits et les aides déjà utiles. Pour un indicateur que vous n’avez pas encore pu apprécier, choisissez « Non observé ».</p>'+area('initial',reviewLabels.initial)+area('commit',reviewLabels.commit)+groups(pro,'p',domains,7,ps)],
- ['Les objectifs et la suite','<p>Choisissez avec le jeune les priorités du moment. Pour chaque objectif retenu, précisez l’aide prévue et un signe observable de réussite.</p>'+domains.map((d,i)=>'<details><summary>'+d+'</summary><p class="muted">Par exemple, '+objectiveExamples[i].toLowerCase()+'.</p>'+area('goal'+i,'Objectif choisi avec le jeune')+area('means'+i,'Aide prévue et adulte qui l’apporte')+area('evidence'+i,'À quoi verra-t-on que l’objectif est atteint ?')+'</details>').join('')+'<p>La première action convenue, c’est le petit pas que le jeune et l’adulte décident de faire juste après l’entretien. Indiquez si possible qui fait quoi et quand.</p>'+select('actionExample','Choisir un exemple',firstActionExamples).replace('name="actionExample"','id="actionExample"')+area('firstAction',reviewLabels.firstAction)+input('contact',reviewLabels.contact,'text',s.ref||'')+input('checkpoint',reviewLabels.checkpoint,'date')]
+ ['Cadre de l’accueil',input('date','Date de l’entretien','date',today(),true)+'<small>L’entretien peut avoir lieu avant l’entrée dans le dispositif.</small>'+input('present',reviewLabels.present)+select('family',reviewLabels.family,['Oui','Non','À vérifier'])+select('origin',reviewLabels.origin,['Équipe éducative collège','Vie scolaire / CPE','Famille / Jeune','Commission / Partenaire'])+guidedArea('reason',reviewLabels.reason)+select('adhesion',reviewLabels.adhesion,['Favorable','À accompagner','Réticente'])+guidedArea('rhythm',reviewLabels.rhythm,{value:s.schedule||''})+guidedArea('logistics',reviewLabels.logistics)],
+ ['La parole du jeune','<p>Tu peux répondre à ton rythme. C’est ton ressenti.</p>'+guidedArea('expect','Qu’est-ce que tu aimerais que La Parenthèse t’apporte ?',{youth:true,hint:'Si ça t’aide, pense à une chose qui rendrait tes journées plus faciles.'})+
+ guidedArea('interests','Qu’est-ce que tu aimes faire ou aimerais essayer ici ?',{youth:true})+
+ guidedArea('obstacle','Qu’est-ce qui est difficile pour toi au collège en ce moment ?',{youth:true,hint:'Tu peux penser à un moment précis de la journée.'})+
+ guidedArea('resource','Qu’est-ce qui t’aide quand c’est difficile ? À qui peux-tu parler ?',{youth:true})+scale('mood','Je me sens',['Bien','Moyen','Pas très bien'])+scale('energy','Mon énergie',['Haute','Moyenne','Basse'])+groups(young,'y',youthDomains,3,ys)+openYoung.map((l,i)=>guidedArea('text'+i,l,{youth:true})).join('')],
+ ['Le regard de l’équipe','<p>Notez les faits et les aides déjà utiles. Pour un indicateur que vous n’avez pas encore pu apprécier, choisissez « Non observé ».</p>'+guidedArea('initial',reviewLabels.initial)+guidedArea('commit',reviewLabels.commit)+groups(pro,'p',domains,7,ps)],
+ ['Les objectifs et la suite','<p>Choisissez avec le jeune les priorités du moment. Pour chaque objectif retenu, précisez l’aide prévue et un signe observable de réussite.</p>'+domains.map((d,i)=>'<details><summary>'+d+'</summary>'+
+  guidedArea('goal'+i,'Objectif choisi avec le jeune')+
+  guidedArea('means'+i,'Aide prévue et adulte qui l’apporte',{hint:'Précisez qui peut apporter cette aide et à quel moment.'})+
+  guidedArea('evidence'+i,'À quoi verra-t-on que l’objectif est atteint ?')+'</details>').join('')+'<p>La première action convenue, c’est le petit pas que le jeune et l’adulte décident de faire juste après l’entretien. Indiquez si possible qui fait quoi et quand.</p>'+guidedArea('firstAction',reviewLabels.firstAction)+input('contact',reviewLabels.contact,'text',s.ref||'')+input('checkpoint',reviewLabels.checkpoint,'date')]
 ];
 target.innerHTML='<form id="entryForm" class="card"><h2>Entretien d’entrée</h2><p id="entryProgress" role="status"></p><progress max="4" value="1" aria-label="Avancement de l’entretien"></progress>'+stages.map(([title,body],i)=>'<section data-entry-step="'+i+'"><h3>'+title+'</h3>'+body+'</section>').join('')+'<div class="actions" id="entryActions"></div><p id="entryMessage" role="status"></p></form>';
 const f=document.getElementById('entryForm'), actions=f.querySelector('#entryActions'), message=f.querySelector('#entryMessage');
 const resume=readReviewDraft(s,'Entrée')||existing;
 let step=Number.isInteger(resume.step)?Math.min(3,Math.max(0,resume.step)):0;
 const remember=bindReviewDraft(f,s,'Entrée',existing,()=>step,message);
-const actionExample=f.querySelector('#actionExample');
-actionExample.onchange=()=>{
- const action=f.elements.firstAction;
- if(actionExample.value){
-  action.value=action.value.trim()?action.value.trimEnd()+'\n'+actionExample.value:actionExample.value;
-  actionExample.value='';
-  remember();
-  action.focus();
- }
-};
 function draw(){
  f.querySelectorAll('[data-entry-step]').forEach((section,i)=>section.hidden=i!==step);
  f.querySelector('#entryProgress').textContent='Étape '+(step+1)+' sur '+stages.length;
@@ -728,9 +841,21 @@ function showReview(s,kind){
 const entry=s.reviews.find(r=>r.kind==='Entrée');
 if(kind==='Entrée'){if(!entry)entryForm(s,document.querySelector('#review'));return}
 const closingNow=kind==='Sortie';
-const objectives=domains.map((d,i)=>'<div class="card"><b>'+d+'</b>'+(entry?.['goal'+i]?'<p>'+esc(entry['goal'+i])+'</p>'+(entry['means'+i]?'<small>Aide prévue · '+esc(entry['means'+i])+'</small>':'')+(entry['evidence'+i]?'<small>Signe de réussite prévu · '+esc(entry['evidence'+i])+'</small>':'')+select('status'+i,'État de l’objectif',['Atteint','Partiellement atteint','À poursuivre','Non évalué']):'<p class="muted">Aucun objectif fixé à l’entrée dans ce domaine.</p>')+area('team'+i,reviewLabels['team'+i])+(closingNow?area('voice'+i,reviewLabels['voice'+i]):'')+'</div>').join('');
+const objectives=domains.map((domain,i)=>{
+ const goal=reviewAnswer(entry||{},'goal'+i);
+ const means=reviewAnswer(entry||{},'means'+i);
+ const evidence=reviewAnswer(entry||{},'evidence'+i);
+ return '<div class="card"><b>'+domain+'</b>'+
+  (goal.trim()?'<p class="review-goal-context">'+esc(goal)+'</p>'+
+   (means.trim()?'<small class="review-goal-context">Aide prévue · '+esc(means)+'</small>':'')+
+   (evidence.trim()?'<small class="review-goal-context">Signe de réussite prévu · '+esc(evidence)+'</small>':'')+
+   select('status'+i,'État de l’objectif',['Atteint','Partiellement atteint','À poursuivre','Non évalué']):
+   '<p class="muted">Aucun objectif fixé à l’entrée dans ce domaine.</p>')+
+  guidedArea('team'+i,reviewLabels['team'+i],{hint:'Ajoutez un exemple concret si vous en avez un.'})+
+  (closingNow?guidedArea('voice'+i,reviewLabels['voice'+i],{youth:true}):'')+'</div>';
+}).join('');
 const target=document.querySelector('#review');
-target.innerHTML='<form class="card" id="reviewForm"><h2>Bilan · '+esc(kind)+'</h2>'+input('date','Date','date',today(),true)+'<h2>Auto-évaluation du jeune</h2><p>C’est ton ressenti. Il n’y a pas de bonne ou de mauvaise réponse.</p>'+groups(young,'y',youthDomains,3,ys)+scale('mood','Je me sens',['Bien','Moyen','Pas très bien'])+scale('energy','Mon énergie',['Haute','Moyenne','Basse'])+openYoung.map((l,i)=>area('text'+i,l)).join('')+(closingNow?area('gain',reviewLabels.gain):'')+'<h2>Évaluation de l’équipe</h2>'+groups(pro,'p',domains,7,ps)+'<h2>Objectifs et accompagnement</h2>'+objectives+(closingNow?select('action',reviewLabels.action,closing)+input('meeting',reviewLabels.meeting,'date')+area('support',reviewLabels.support):'')+'<p id="reviewMessage" role="status"></p><button type="button" id="reviewDraftPdf">Télécharger le brouillon en PDF</button><button class="primary">Enregistrer le bilan</button></form>';
+target.innerHTML='<form class="card" id="reviewForm"><h2>Bilan · '+esc(kind)+'</h2>'+input('date','Date','date',today(),true)+'<h2>Auto-évaluation du jeune</h2><p>C’est ton ressenti. Il n’y a pas de bonne ou de mauvaise réponse.</p>'+groups(young,'y',youthDomains,3,ys)+scale('mood','Je me sens',['Bien','Moyen','Pas très bien'])+scale('energy','Mon énergie',['Haute','Moyenne','Basse'])+openYoung.map((l,i)=>guidedArea('text'+i,l,{youth:true})).join('')+(closingNow?guidedArea('gain',reviewLabels.gain,{youth:true,hint:'Pense à un moment où tu as fait quelque chose qui était difficile avant.'}):'')+'<h2>Évaluation de l’équipe</h2>'+groups(pro,'p',domains,7,ps)+'<h2>Objectifs et accompagnement</h2>'+objectives+(closingNow?select('action',reviewLabels.action,closing)+input('meeting',reviewLabels.meeting,'date')+guidedArea('support',reviewLabels.support):'')+'<p id="reviewMessage" role="status"></p><button type="button" id="reviewDraftPdf">Télécharger le brouillon en PDF</button><button class="primary">Enregistrer le bilan</button></form>';
 target.scrollIntoView();
 document.querySelector('#reviewDraftPdf').onclick=event=>downloadReviewDraft(s,Object.fromEntries(new FormData(document.getElementById('reviewForm'))),kind,event.currentTarget);
 const reviewMessage=document.querySelector('#reviewMessage');
