@@ -178,7 +178,7 @@ async function save(){
 function reviewConflict(student,review){
  const entry=student.reviews.find(r=>r.kind==='Entrée');
  const exit=student.reviews.find(r=>r.kind==='Sortie');
- if(review.date<student.start||(review.kind!=='Entrée'&&entry&&review.date<entry.date))
+ if(review.kind!=='Entrée'&&(review.date<student.start||(entry&&review.date<entry.date)))
   return 'La date du bilan doit être égale ou postérieure à la date d’entrée.';
  if(review.kind==='Entrée')
   return entry?'Un bilan d’entrée est déjà enregistré pour ce dossier.':'';
@@ -559,7 +559,7 @@ function entryForm(s,target){
 const existing=s.entryDraft||{};
 const objectiveExamples=['Demander une pause avant de quitter l’activité','Tenir un rôle pendant un atelier collectif','Commencer une tâche avec une consigne écrite','Poser une question sur un métier pendant une visite'];
 const stages=[
- ['Cadre de l’accueil',input('date','Date de l’entretien','date',today()<s.start?s.start:today(),true)+'<small>La date du bilan doit être le '+fmt(s.start)+' ou après.</small>'+input('present',reviewLabels.present)+select('family',reviewLabels.family,['Oui','Non','À vérifier'])+select('origin',reviewLabels.origin,['Équipe éducative collège','Vie scolaire / CPE','Famille / Jeune','Commission / Partenaire'])+area('reason',reviewLabels.reason)+select('adhesion',reviewLabels.adhesion,['Favorable','À accompagner','Réticente'])+area('rhythm',reviewLabels.rhythm,s.schedule||'')+area('logistics',reviewLabels.logistics)],
+ ['Cadre de l’accueil',input('date','Date de l’entretien','date',today(),true)+'<small>L’entretien peut avoir lieu avant l’entrée dans le dispositif.</small>'+input('present',reviewLabels.present)+select('family',reviewLabels.family,['Oui','Non','À vérifier'])+select('origin',reviewLabels.origin,['Équipe éducative collège','Vie scolaire / CPE','Famille / Jeune','Commission / Partenaire'])+area('reason',reviewLabels.reason)+select('adhesion',reviewLabels.adhesion,['Favorable','À accompagner','Réticente'])+area('rhythm',reviewLabels.rhythm,s.schedule||'')+area('logistics',reviewLabels.logistics)],
  ['La parole du jeune','<p>Tu peux répondre à ton rythme. C’est ton ressenti.</p>'+area('expect','Qu’est-ce que tu aimerais que La Parenthèse t’apporte ?')+area('interests','Qu’est-ce que tu aimes faire ou aimerais essayer ici ?')+area('obstacle','Qu’est-ce qui est difficile pour toi au collège en ce moment ?')+area('resource','Qu’est-ce qui t’aide quand c’est difficile ? À qui peux-tu parler ?')+scale('mood','Je me sens',['Bien','Moyen','Pas très bien'])+scale('energy','Mon énergie',['Haute','Moyenne','Basse'])+groups(young,'y',youthDomains,3,ys)+openYoung.map((l,i)=>area('text'+i,l)).join('')],
  ['Le regard de l’équipe','<p>Notez les faits et les aides déjà utiles. Pour un indicateur que vous n’avez pas encore pu apprécier, choisissez « Non observé ».</p>'+area('initial',reviewLabels.initial)+area('commit',reviewLabels.commit)+groups(pro,'p',domains,7,ps)],
  ['Les objectifs et la suite','<p>Choisissez avec le jeune les priorités du moment. Pour chaque objectif retenu, précisez l’aide prévue et un signe observable de réussite.</p>'+domains.map((d,i)=>'<details><summary>'+d+'</summary><p class="muted">Par exemple, '+objectiveExamples[i].toLowerCase()+'.</p>'+area('goal'+i,'Objectif choisi avec le jeune')+area('means'+i,'Aide prévue et adulte qui l’apporte')+area('evidence'+i,'À quoi verra-t-on que l’objectif est atteint ?')+'</details>').join('')+'<p>La première action convenue, c’est le petit pas que le jeune et l’adulte décident de faire juste après l’entretien. Indiquez si possible qui fait quoi et quand.</p>'+select('actionExample','Choisir un exemple',firstActionExamples).replace('name="actionExample"','id="actionExample"')+area('firstAction',reviewLabels.firstAction)+input('contact',reviewLabels.contact,'text',s.ref||'')+input('checkpoint',reviewLabels.checkpoint,'date')]
@@ -633,8 +633,8 @@ f.noValidate=true;
 form('entryForm',async v=>{
  if(step!==3||busy)return;
  remember();
- if(!v.date||v.date<s.start){
-  message.textContent='La date de l’entretien doit être le '+fmt(s.start)+' ou après.';
+ if(!v.date){
+  message.textContent='Indiquez la date de l’entretien.';
   const editDate=document.createElement('button');
   editDate.type='button';
   editDate.textContent='Corriger la date';
