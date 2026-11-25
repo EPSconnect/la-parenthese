@@ -126,7 +126,7 @@ const openYoung=['Une chose dont je suis fier / fière','Une chose que je veux a
 const weekly=['Positif','Fragile','Alerte','Absent'];
 const app=document.querySelector('#app'), session=document.querySelector('#session');
 let adult='', selected='', tab='observations', filter='Tous', period=monday(today());
-let state={students:[]}, token='', version=null, busy=false;
+let state={students:[]}, token='', accountId='', version=null, busy=false;
 const endpoint='https://phyysfjzsbxhlbbgcwrg.supabase.co';
 const publicKey='sb_publishable_m_PRNt8jJrxh3ASb8SV4tQ_k7lkOGJM';
 async function api(path,accessToken,options={}){
@@ -244,6 +244,7 @@ function teacherLogin(){
    const login=await api('/auth/v1/token?grant_type=password',null,{method:'POST',body:JSON.stringify({email:v.email.trim(),password:v.password})});
    if(!login.access_token||!await loadShared(login.access_token)){error.textContent='Ce compte n’est pas autorisé à accéder aux dossiers.';return}
    token=login.access_token;
+   accountId=login.user?.id||'';
    adult=v.author.trim();
    render();
   }catch(e){error.textContent=/^(400|401)$/.test(e.message)?'Adresse ou mot de passe incorrect, ou compte à confirmer.':'Connexion impossible. Réessayez dans un instant.'}
@@ -393,12 +394,45 @@ const end=shift(period,6), list=s.obs.filter(o=>o.date>=period&&o.date<=end), su
 p.innerHTML='<section class="card"><div class="split"><h2>Du '+fmt(period)+' au '+fmt(end)+'</h2><div>'+button('←','prev')+' '+button('→','next')+'</div></div><div class="grid">'+weekly.map(w=>'<div><b>'+list.filter(o=>o.dynamic===w).length+'</b> · '+w+'</div>').join('')+'</div></section><form id="summary" class="card"><h2>Synthèse de l’équipe</h2>'+area('win','Réussite à valoriser',summary.win)+area('watch','Point d’attention',summary.watch)+area('next','Priorité commune pour la semaine suivante',summary.next)+(summary.adult?'<p>Dernière saisie · '+esc(summary.adult)+'</p>':'')+'<button class="primary">Enregistrer la synthèse</button></form><h2>Contributions de la semaine</h2>'+obsList(list);
 form('summary',async v=>{if(!Object.values(v).some(x=>x.trim())){alert('Renseignez au moins un élément de synthèse.');return}const previous=s.weeks[period];s.weeks[period]={...v,adult};if(await save())render();else if(previous)s.weeks[period]=previous;else delete s.weeks[period]});
 }
+function reviewDraftKey(s,kind){
+ return accountId?'parenthese:review:'+accountId+':'+s.id+':'+kind:null;
+}
+function readReviewDraft(s,kind){
+ const key=reviewDraftKey(s,kind);
+ if(!key)return null;
+ try{return JSON.parse(sessionStorage.getItem(key)||'null')}catch{return null}
+}
+function clearReviewDraft(s,kind){
+ const key=reviewDraftKey(s,kind);
+ if(key){try{sessionStorage.removeItem(key)}catch{}}
+}
+function bindReviewDraft(form,s,kind,initial,getStep,status){
+ const local=readReviewDraft(s,kind);
+ const existing=local||initial;
+ for(const field of form.elements){
+  if(!field.name||!Object.hasOwn(existing,field.name))continue;
+  if(field.type==='radio')field.checked=field.value===existing[field.name];
+  else field.value=existing[field.name];
+ }
+ if(local)status.textContent='Saisie en cours récupérée dans cet onglet. Validez le bilan pour l’enregistrer dans le dossier partagé.';
+ const remember=()=>{
+  const key=reviewDraftKey(s,kind);
+  if(!key)return;
+  const values=Object.fromEntries(new FormData(form));
+  if(getStep)values.step=getStep();
+  try{sessionStorage.setItem(key,JSON.stringify(values))}
+  catch{status.textContent='La copie de secours est indisponible. Gardez cet onglet ouvert et copiez votre saisie si nécessaire.'}
+ };
+ form.addEventListener('input',remember);
+ form.addEventListener('change',remember);
+ return remember;
+}
 function bilans(s,p){
 const entry=s.reviews.find(r=>r.kind==='Entrée');
 const closure=s.reviews.some(r=>r.kind==='Sortie');
 const types=!entry?['Entrée']:closure?[]:s.group==='Parcours'?['Intermédiaire','Sortie']:['Sortie'];
 const pending=s.group==='Parcours'&&entry&&!closure;
-p.innerHTML='<div class="actions">'+types.map(k=>button({'Entrée':s.entryDraft?'Reprendre le brouillon':'Commencer le bilan d’entrée','Intermédiaire':'Bilan intermédiaire','Sortie':'Bilan de sortie'}[k],'review'+k,true)).join('')+'</div>'+(pending?'<p class="muted">Un bilan intermédiaire par mois pendant le parcours.</p>':'')+'<div id="review"></div><h2>Bilans enregistrés</h2>'+([...s.reviews].reverse().map(r=>'<details><summary>'+esc(r.kind)+' · '+fmt(r.date)+' · '+esc(r.adult)+'</summary>'+reviewRead(r)+'</details>').join('')||'<p class="muted">Aucun bilan enregistré.</p>');
+p.innerHTML='<div class="actions">'+types.map(k=>button({'Entrée':s.entryDraft||readReviewDraft(s,k)?'Reprendre le brouillon':'Commencer le bilan d’entrée','Intermédiaire':readReviewDraft(s,k)?'Reprendre le bilan intermédiaire':'Bilan intermédiaire','Sortie':readReviewDraft(s,k)?'Reprendre le bilan de sortie':'Bilan de sortie'}[k],'review'+k,true)).join('')+'</div>'+(pending?'<p class="muted">Un bilan intermédiaire par mois pendant le parcours.</p>':'')+'<div id="review"></div><h2>Bilans enregistrés</h2>'+([...s.reviews].reverse().map(r=>'<details><summary>'+esc(r.kind)+' · '+fmt(r.date)+' · '+esc(r.adult)+'</summary>'+reviewRead(r)+'</details>').join('')||'<p class="muted">Aucun bilan enregistré.</p>');
 }
 function reviewRead(r){
 const content=Object.entries(r).filter(([k,v])=>v&&!['kind','date','adult'].includes(k));
@@ -436,21 +470,19 @@ const stages=[
 ];
 target.innerHTML='<form id="entryForm" class="card"><h2>Entretien d’entrée</h2><p id="entryProgress" role="status"></p><progress max="4" value="1" aria-label="Avancement de l’entretien"></progress>'+stages.map(([title,body],i)=>'<section data-entry-step="'+i+'"><h3>'+title+'</h3>'+body+'</section>').join('')+'<div class="actions" id="entryActions"></div><p id="entryMessage" role="status"></p></form>';
 const f=document.getElementById('entryForm'), actions=f.querySelector('#entryActions'), message=f.querySelector('#entryMessage');
-for(const field of f.elements){
- if(!Object.hasOwn(existing,field.name))continue;
- if(field.type==='radio')field.checked=field.value===existing[field.name];
- else field.value=existing[field.name];
-}
+const resume=readReviewDraft(s,'Entrée')||existing;
+let step=Number.isInteger(resume.step)?Math.min(3,Math.max(0,resume.step)):0;
+const remember=bindReviewDraft(f,s,'Entrée',existing,()=>step,message);
 const actionExample=f.querySelector('#actionExample');
 actionExample.onchange=()=>{
  const action=f.elements.firstAction;
  if(actionExample.value){
   action.value=action.value.trim()?action.value.trimEnd()+'\n'+actionExample.value:actionExample.value;
   actionExample.value='';
+  remember();
   action.focus();
  }
 };
-let step=Number.isInteger(existing.step)?Math.min(3,Math.max(0,existing.step)):0;
 function draw(){
  f.querySelectorAll('[data-entry-step]').forEach((section,i)=>section.hidden=i!==step);
  f.querySelector('#entryProgress').textContent='Étape '+(step+1)+' sur '+stages.length;
@@ -462,6 +494,7 @@ actions.onclick=async e=>{
  const b=e.target.closest('button');
  if(!b)return;
  if(b.hasAttribute('data-draft')){
+  remember();
   const previous=s.entryDraft;
   s.entryDraft={...values(),step};
   if(await save()){message.textContent='Brouillon enregistré dans le dossier partagé.';savedMessage='';}
@@ -471,12 +504,14 @@ actions.onclick=async e=>{
   step+=Number(b.dataset.step);
   message.textContent='';
   draw();
+  remember();
   target.scrollIntoView();
  }
 };
 f.noValidate=true;
 form('entryForm',async v=>{
  if(step!==3||busy)return;
+ remember();
  if(!v.date||v.date<s.start){
   step=0;
   draw();
@@ -495,8 +530,9 @@ form('entryForm',async v=>{
  const previous=s.entryDraft;
  delete s.entryDraft;
  s.reviews.push({...v,kind:'Entrée',adult});
- if(await save())render();
- else{ s.reviews.pop(); s.entryDraft=previous; }
+ message.textContent='Enregistrement du bilan en cours…';
+ if(await save()){clearReviewDraft(s,'Entrée');render()}
+ else{ s.reviews.pop(); s.entryDraft=previous; message.textContent='Bilan non enregistré. La saisie est encore affichée.'; }
 });
 draw();
 target.scrollIntoView();
@@ -507,9 +543,11 @@ if(kind==='Entrée'){if(!entry)entryForm(s,document.querySelector('#review'));re
 const closingNow=kind==='Sortie';
 const objectives=domains.map((d,i)=>'<div class="card"><b>'+d+'</b>'+(entry?.['goal'+i]?'<p>'+esc(entry['goal'+i])+'</p>'+(entry['means'+i]?'<small>Aide prévue · '+esc(entry['means'+i])+'</small>':'')+(entry['evidence'+i]?'<small>Signe de réussite prévu · '+esc(entry['evidence'+i])+'</small>':'')+select('status'+i,'État de l’objectif',['Atteint','Partiellement atteint','À poursuivre','Non évalué']):'<p class="muted">Aucun objectif fixé à l’entrée dans ce domaine.</p>')+area('team'+i,reviewLabels['team'+i])+(closingNow?area('voice'+i,reviewLabels['voice'+i]):'')+'</div>').join('');
 const target=document.querySelector('#review');
-target.innerHTML='<form class="card" id="reviewForm"><h2>Bilan · '+esc(kind)+'</h2>'+input('date','Date','date',today(),true)+'<h2>Auto-évaluation du jeune</h2><p>C’est ton ressenti. Il n’y a pas de bonne ou de mauvaise réponse.</p>'+groups(young,'y',youthDomains,3,ys)+scale('mood','Je me sens',['Bien','Moyen','Pas très bien'])+scale('energy','Mon énergie',['Haute','Moyenne','Basse'])+openYoung.map((l,i)=>area('text'+i,l)).join('')+(closingNow?area('gain',reviewLabels.gain):'')+'<h2>Évaluation de l’équipe</h2>'+groups(pro,'p',domains,7,ps)+'<h2>Objectifs et accompagnement</h2>'+objectives+(closingNow?select('action',reviewLabels.action,closing)+input('meeting',reviewLabels.meeting,'date')+area('support',reviewLabels.support):'')+'<button class="primary">Enregistrer le bilan</button></form>';
+target.innerHTML='<form class="card" id="reviewForm"><h2>Bilan · '+esc(kind)+'</h2>'+input('date','Date','date',today(),true)+'<h2>Auto-évaluation du jeune</h2><p>C’est ton ressenti. Il n’y a pas de bonne ou de mauvaise réponse.</p>'+groups(young,'y',youthDomains,3,ys)+scale('mood','Je me sens',['Bien','Moyen','Pas très bien'])+scale('energy','Mon énergie',['Haute','Moyenne','Basse'])+openYoung.map((l,i)=>area('text'+i,l)).join('')+(closingNow?area('gain',reviewLabels.gain):'')+'<h2>Évaluation de l’équipe</h2>'+groups(pro,'p',domains,7,ps)+'<h2>Objectifs et accompagnement</h2>'+objectives+(closingNow?select('action',reviewLabels.action,closing)+input('meeting',reviewLabels.meeting,'date')+area('support',reviewLabels.support):'')+'<p id="reviewMessage" role="status"></p><button class="primary">Enregistrer le bilan</button></form>';
 target.scrollIntoView();
-form('reviewForm',async v=>{if(v.date<s.start||(entry&&v.date<entry.date)){alert('La date doit être postérieure ou égale à la date d’entrée.');return}if(kind==='Intermédiaire'&&(v.date.slice(0,7)===entry.date.slice(0,7)||s.reviews.some(r=>r.kind===kind&&r.date.slice(0,7)===v.date.slice(0,7)))){alert('Un bilan d’entrée ou intermédiaire existe déjà pour ce mois.');return}if(closingNow&&s.reviews.some(r=>r.date>v.date)){alert('La sortie doit suivre les bilans déjà enregistrés.');return}if(!Object.entries(v).some(([k,x])=>k!=='date'&&x.trim())){alert('Renseignez au moins une réponse ou un objectif.');return}s.reviews.push({...v,kind,adult});if(await save())render();else s.reviews.pop()});
+const reviewMessage=document.querySelector('#reviewMessage');
+const rememberReview=bindReviewDraft(document.getElementById('reviewForm'),s,kind,{},null,reviewMessage);
+form('reviewForm',async v=>{if(busy)return;rememberReview();if(v.date<s.start||(entry&&v.date<entry.date)){alert('La date doit être postérieure ou égale à la date d’entrée.');return}if(kind==='Intermédiaire'&&(v.date.slice(0,7)===entry.date.slice(0,7)||s.reviews.some(r=>r.kind===kind&&r.date.slice(0,7)===v.date.slice(0,7)))){alert('Un bilan d’entrée ou intermédiaire existe déjà pour ce mois.');return}if(closingNow&&s.reviews.some(r=>r.date>v.date)){alert('La sortie doit suivre les bilans déjà enregistrés.');return}if(!Object.entries(v).some(([k,x])=>k!=='date'&&x.trim())){alert('Renseignez au moins une réponse ou un objectif.');return}s.reviews.push({...v,kind,adult});reviewMessage.textContent='Enregistrement du bilan en cours…';if(await save()){clearReviewDraft(s,kind);render()}else{s.reviews.pop();reviewMessage.textContent='Bilan non enregistré. La saisie est encore affichée.'}});
 }
 const exportSections={bilans:'Bilans enregistrés',observations:'Observations enregistrées',semaines:'Synthèses hebdomadaires'};
 function pdfExports(s,p){
@@ -550,7 +588,7 @@ app.onclick=handle;session.onclick=handle;
 async function handle(e){
 if(busy)return;
 const action=e.target.closest('[data-action]')?.dataset.action;if(!action)return;
-if(action==='switch'){observationEdit=null;adult='';token='';version=null;state={students:[]};selected='';render();return}
+if(action==='switch'){observationEdit=null;adult='';token='';accountId='';version=null;state={students:[]};selected='';render();return}
 if(!adult)return;
 if(action==='deleteStudent'){
  const index=state.students.findIndex(s=>s.id===selected);
@@ -566,7 +604,7 @@ if(action==='deleteStudent'){
  return;
 }
 if(action==='refreshShared'){
- if(!confirm('Actualiser les dossiers partagés ? Une saisie non enregistrée sera perdue.'))return;
+ if(!confirm('Actualiser les dossiers partagés ? Vérifiez que toute autre saisie est enregistrée.'))return;
  busy=true;
  app.inert=session.inert=true;
  try{
