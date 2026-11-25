@@ -135,10 +135,11 @@ progress{width:100%;accent-color:var(--green)}
 .guided-answer legend{padding:0 .35rem;color:#183e31;font-size:1rem;font-weight:750}
 .guided-choices{margin:.3rem 0 .65rem;padding:.55rem .7rem;background:#fff;border:1px solid #d7e4d8;border-radius:8px}
 .guided-choices summary{color:#255844;font-size:.9rem;font-weight:700;cursor:pointer}
+.guided-count{display:inline-block;margin-left:.6rem;padding:.12rem .45rem;border-radius:5px;background:#e7f1e8;color:#214c3a;font-size:.76rem;font-weight:650}
 .guided-choices summary:focus-visible{outline:2px solid #276c52;outline-offset:3px}
 .guided-hint{margin:.35rem 0 .55rem;color:#405a4d;font-size:.85rem}
 .guided-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:.4rem;margin:.45rem 0 .15rem}
-.guided-options label{display:flex;align-items:center;gap:.55rem;margin:0;padding:.45rem .6rem;border:1px solid #d9e5da;border-radius:8px;background:#fff;font-size:.88rem;font-weight:500;cursor:pointer}
+.guided-options label{display:flex;align-items:center;gap:.55rem;min-height:44px;margin:0;padding:.45rem .6rem;border:1px solid #d9e5da;border-radius:8px;background:#fff;font-size:.88rem;font-weight:500;cursor:pointer}
 .guided-options label:has(:checked){border-color:#57866c;background:#e6f1e7}
 .guided-options input[type=checkbox]{width:1rem;height:1rem;min-height:0;margin:0;flex:none;accent-color:#235c46}
 .guided-text-label{margin:.25rem 0 0;color:#375548;font-size:.85rem}
@@ -716,12 +717,12 @@ function guidedArea(name,label,{value='',hint='',youth=false}={}){
  const options=domain?guidedDomainOptions[domain[1]][Number(domain[2])]:
   name==='firstAction'?firstActionExamples:guidedReviewOptions[name];
  const id='guided-'+name;
- const alternatives=youth?['Je ne sais pas encore','Je préfère en parler plus tard']:[];
+ const optionalAnswers=youth?['Je ne sais pas encore','Je préfère en parler plus tard']:[];
  return '<fieldset class="guided-answer" data-guided-answer><legend>'+esc(label)+'</legend>'+
   (hint?'<p class="guided-hint">'+esc(hint)+'</p>':'')+
-  '<details class="guided-choices"><summary>'+(youth?'J’ai besoin d’idées':'Voir les propositions')+'<span data-choice-count></span></summary>'+
-  '<p class="guided-hint">'+(youth?'Coche ce qui te ressemble. Tu peux cocher plusieurs idées.':'Vous pouvez cocher plusieurs propositions.')+'</p>'+
-  '<div class="guided-options">'+[...options,...alternatives].map((option,index)=>'<label><input type="checkbox" value="'+esc(option)+'"'+(index>=options.length?' data-choice-alternative':'')+'><span>'+esc(option)+'</span></label>').join('')+
+  '<details class="guided-choices"><summary>'+(youth?'J’ai besoin d’idées':'Voir les propositions')+'<span class="guided-count" data-choice-count>Plusieurs choix possibles</span></summary>'+
+  '<p class="guided-hint">'+(youth?'Touche les réponses qui te correspondent. Touche-les à nouveau pour les décocher.':'Cochez toutes les propositions qui conviennent.')+'</p>'+
+  '<div class="guided-options">'+[...options,...optionalAnswers].map(option=>'<label><input type="checkbox" value="'+esc(option)+'"><span>'+esc(option)+'</span></label>').join('')+
   '</div></details><input type="hidden" name="choices_'+name+'"><label class="guided-text-label" for="'+id+'">'+(youth?'Avec tes mots, si tu veux':'Précision libre (facultatif)')+'</label>'+
   '<textarea id="'+id+'" name="'+name+'">'+esc(value)+'</textarea></fieldset>';
 }
@@ -746,15 +747,12 @@ function bindGuidedAnswers(form){
   const count=field.querySelector('[data-choice-count]');
   const selected=recordedChoices(storage.value);
   choices.forEach(choice=>{choice.checked=selected.includes(choice.value)});
-  function updateCount(total){count.textContent=total?' · '+total+' sélectionné'+(total>1?'s':''):''}
+  function updateCount(total){count.textContent=total?total+' choix coché'+(total===1?'':'s'):'Plusieurs choix possibles'}
   updateCount(selected.length);
   if(selected.length)field.querySelector('details').open=true;
   field.addEventListener('input',event=>{
    const choice=event.target;
    if(!choices.includes(choice))return;
-   if(choice.checked)for(const other of choices){
-    if(other!==choice&&(choice.hasAttribute('data-choice-alternative')||other.hasAttribute('data-choice-alternative')))other.checked=false;
-   }
    const values=choices.filter(item=>item.checked).map(item=>item.value);
    storage.value=values.length?JSON.stringify(values):'';
    updateCount(values.length);
