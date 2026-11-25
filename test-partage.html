@@ -476,15 +476,20 @@ actions.onclick=async e=>{
 };
 f.noValidate=true;
 form('entryForm',async v=>{
- if(step!==3)return;
+ if(step!==3||busy)return;
  if(!v.date||v.date<s.start){
   step=0;
   draw();
   message.textContent='Indiquez une date d’entretien égale ou postérieure à la date d’entrée du dossier.';
   return;
  }
- if(!v.expect.trim()&&!young.some((_,i)=>v['y'+i])&&!openYoung.some((_,i)=>v['text'+i]?.trim())&&!['interests','obstacle','resource','mood','energy'].some(k=>v[k]?.trim())&&!v.initial.trim()&&!domains.some((_,i)=>v['goal'+i].trim())){
-  message.textContent='Renseignez une réponse du jeune, un constat de l’équipe ou un objectif avant de valider.';
+ const prefilled={rhythm:s.schedule||'',contact:s.ref||''};
+ const hasContent=Object.entries(v).some(([field,value])=>{
+  const answer=value.trim();
+  return field!=='date'&&answer!==''&&answer!==(prefilled[field]||'').trim();
+ });
+ if(!hasContent){
+  message.textContent='Renseignez au moins un élément du bilan avant de valider.';
   return;
  }
  const previous=s.entryDraft;
