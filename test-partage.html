@@ -86,24 +86,35 @@ progress{width:100%;accent-color:var(--green)}
 @media (max-width:390px){header{align-items:flex-start;flex-direction:column;gap:7px}#session{justify-content:flex-start}}
 @media print{header,nav,button,.notice{display:none}main{margin:0}.card,details{break-inside:avoid}.card{box-shadow:none}}
 
-.review-section{margin:1rem 0 1.25rem}
-.review-section h4{margin:0;padding:.55rem .75rem;border:1px solid #dce6dd;border-radius:8px 8px 0 0;background:#edf3ea;color:#173f33;font-size:.98rem}
-.review-section dl{margin:0}
-.answer-row{padding:.6rem .75rem;border:1px solid #e0e8e1;border-top:0;background:#fff}
-.answer-row:nth-child(even){background:#f6f8f4}
-.answer-row dt{font-weight:700;color:#173b30}
-.answer-row dd{margin:.2rem 0 0;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
-.report-heading{border-bottom:2px solid #2d5d4b;padding-bottom:.5rem;margin-bottom:1rem}
-.report-heading h3{margin:0 0 .2rem;font-size:1.2rem}
-.report-heading p{margin:0}
-@media print{
- #pdfReport .review-card{padding:0;border:0}
- #pdfReport .review-section h4{break-after:avoid;padding:5px 7px;border-color:#8da69a;background:#fff;font-size:11pt}
- #pdfReport .review-section{margin:11px 0;break-inside:auto}
- #pdfReport .review-section dl{margin:0}
- #pdfReport .answer-row{padding:4px 7px;background:#fff}
- #pdfReport .answer-row dd{margin:2px 0 0;font-size:10pt;orphans:2;widows:2}
- #pdfReport .answer-row dt{break-after:avoid;overflow-wrap:anywhere}
+.review-record{padding:0;overflow:hidden}
+.review-record summary{padding:1rem 1.2rem;background:#f2f6ee;color:#183a30}
+.review-record summary::marker{color:#2b6954}
+.review-record[open] summary{border-bottom:1px solid #dce8df}
+.review-summary-title{font-size:1.04rem;font-weight:750}
+.review-summary-meta{display:block;margin:.25rem 0 0 1rem;color:#53665d;font-size:.85rem}
+.review-record-body{padding:.15rem 1.15rem .45rem}
+.review-section{margin:1.3rem 0}
+.review-section h4{margin:0;padding:.65rem .85rem;border-left:4px solid #5f896d;border-radius:0 8px 8px 0;background:#eaf0e4;color:#173f33;font-size:1.04rem}
+.review-section dl{margin:.3rem 0 0}
+.answer-row{padding:.68rem .85rem;border-bottom:1px solid #dde6de}
+.answer-row:nth-child(even){background:#f7f9f5}
+.answer-row dt{font-weight:700;color:#19392f}
+.answer-row dd{margin:.25rem 0 0;color:#20382f;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.answer-row--scale{display:grid;grid-template-columns:minmax(0,1fr) minmax(120px,.38fr);gap:.65rem;align-items:baseline}
+.answer-row--scale dd{margin:0;font-weight:650;color:#255c49}
+.report-cover{border-top:5px solid #224e3c;border-bottom:1px solid #a4b6a7;padding:11px 0 12px;margin:0 0 16px;break-inside:avoid}
+.report-cover .report-brand{color:#295a47;font-weight:750;font-size:10pt;letter-spacing:.035em;margin:0 0 5px}
+#pdfReport .report-cover h1{margin:0 0 10px;color:#173b30;font-size:25pt;line-height:1.08}
+.report-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 18px;margin:.4rem 0 0}
+.report-meta div{border-top:1px solid #ccd9ce;padding:4px 0}
+.report-meta dt{color:#47594d;font-size:9pt;font-weight:700}
+.report-meta dd{margin:1px 0 0;font-size:10.5pt}
+.report-heading{padding:.25rem 0 .45rem;border-bottom:1px solid #8fa99a;margin-bottom:.65rem;break-inside:avoid}
+.report-heading h3{margin:0 0 .2rem;font-size:1.18rem;color:#193d32}
+.report-heading p{margin:0;color:#53665d}
+@media(max-width:540px){
+ .answer-row--scale{grid-template-columns:minmax(0,1fr);gap:.2rem}
+ .review-record-body{padding-inline:.65rem}
 }
 #pdfReport{display:none}
 @media print{
@@ -117,6 +128,19 @@ progress{width:100%;accent-color:var(--green)}
  #pdfReport dd,#pdfReport p{white-space:pre-wrap;overflow-wrap:anywhere}
  #pdfReport dl{margin:8px 0}
  #pdfReport dd{margin:2px 0 8px 0}
+ #pdfReport .report-meta{margin:4px 0 0}
+ #pdfReport .report-meta dd{margin:1px 0 0}
+ #pdfReport .review-card{padding:0;border:0}
+ #pdfReport .review-section{margin:10px 0 13px;break-inside:auto}
+ #pdfReport .review-section h4{break-after:avoid;padding:4pt 6pt;border-left:3pt solid #5f896d;border-bottom:1px solid #c1cec3;border-radius:0;background:#fff;font-size:10.8pt}
+ #pdfReport .review-section dl{margin:1px 0 0}
+ #pdfReport .answer-row{padding:3.5pt 6pt;background:#fff}
+ #pdfReport .answer-row dt{font-size:10pt;break-after:avoid;overflow-wrap:anywhere}
+ #pdfReport .answer-row dd{margin:2px 0 0;font-size:10pt;line-height:1.38;orphans:2;widows:2}
+ #pdfReport .answer-row--scale{display:block;break-inside:avoid}
+ #pdfReport .answer-row--scale dt,#pdfReport .answer-row--scale dd{display:inline}
+ #pdfReport .answer-row--scale dd::before{content:" — "}
+
 }
 
 .auteuil-card{display:inline-flex;align-items:center;gap:10px;margin-top:16px;padding:8px 12px 8px 8px;border:1px solid #e6d8dc;border-radius:12px;background:#fff;color:#453940;font-size:.82rem;font-weight:600}
@@ -523,7 +547,7 @@ const entry=s.reviews.find(r=>r.kind==='Entrée');
 const closure=s.reviews.some(r=>r.kind==='Sortie');
 const types=!entry?['Entrée']:closure?[]:s.group==='Parcours'?['Intermédiaire','Sortie']:['Sortie'];
 const pending=s.group==='Parcours'&&entry&&!closure;
-p.innerHTML='<div class="actions">'+types.map(k=>button({'Entrée':s.entryDraft||readReviewDraft(s,k)?'Reprendre le brouillon':'Commencer le bilan d’entrée','Intermédiaire':readReviewDraft(s,k)?'Reprendre le bilan intermédiaire':'Bilan intermédiaire','Sortie':readReviewDraft(s,k)?'Reprendre le bilan de sortie':'Bilan de sortie'}[k],'review'+k,true)).join('')+'</div>'+(pending?'<p class="muted">Un bilan intermédiaire par mois pendant le parcours.</p>':'')+'<div id="review"></div><h2>Bilans enregistrés</h2>'+(s.reviews.map((r,index)=>'<details><summary>'+esc(r.kind)+' · '+fmt(r.date)+' · '+esc(r.adult)+'</summary><div class="actions">'+button('Télécharger ce bilan en PDF','pdfReview:'+index,true)+'</div>'+reviewRead(r)+'</details>').reverse().join('')||'<p class="muted">Aucun bilan enregistré.</p>');
+p.innerHTML='<div class="actions">'+types.map(k=>button({'Entrée':s.entryDraft||readReviewDraft(s,k)?'Reprendre le brouillon':'Commencer le bilan d’entrée','Intermédiaire':readReviewDraft(s,k)?'Reprendre le bilan intermédiaire':'Bilan intermédiaire','Sortie':readReviewDraft(s,k)?'Reprendre le bilan de sortie':'Bilan de sortie'}[k],'review'+k,true)).join('')+'</div>'+(pending?'<p class="muted">Un bilan intermédiaire par mois pendant le parcours.</p>':'')+'<div id="review"></div><h2>Bilans enregistrés</h2>'+(s.reviews.map((r,index)=>'<details class="review-record"><summary><span class="review-summary-title">'+reviewHeading(r.kind)+'</span><span class="review-summary-meta">'+fmt(r.date)+(r.adult?' · '+esc(r.adult):'')+'</span></summary><div class="review-record-body"><div class="actions">'+button('Télécharger ce bilan en PDF','pdfReview:'+index,true)+'</div>'+reviewRead(r)+'</div></details>').reverse().join('')||'<p class="muted">Aucun bilan enregistré.</p>');
 }
 function reviewRead(review){
  const sections=[];
@@ -539,7 +563,7 @@ function reviewRead(review){
    const item=match?(match[1]==='y'?young[Number(match[2])]:pro[Number(match[2])]?.[0]):null;
    const label=item||reviewLabels[key]||key;
    const display=['meeting','checkpoint'].includes(key)&&/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(value)?fmt(value):value;
-   answers.push('<div class="answer-row"><dt>'+esc(label)+'</dt><dd>'+esc(display)+'</dd></div>');
+   answers.push('<div class="answer-row'+(match?' answer-row--scale':'')+'"><dt>'+esc(label)+'</dt><dd>'+esc(display)+'</dd></div>');
   }
   if(answers.length)sections.push('<section class="review-section"><h4>'+esc(title)+'</h4><dl>'+answers.join('')+'</dl></section>');
  };
@@ -743,9 +767,21 @@ function printDossier(s,section,draftTitle=''){
  };
  const sections=section==='all'?Object.keys(exportSections):[section];
  const report=document.querySelector('#pdfReport');
- report.innerHTML='<h1>La Parenthèse</h1>'+(draftTitle?'<p><strong>'+esc(draftTitle)+' · Saisie non validée</strong></p>':'')+'<h2>'+esc(s.name)+'</h2><p>'+esc(s.classe)+' · '+esc(s.group)+(s.module?' · Module '+esc(s.module):'')+'</p><p>Entrée le '+fmt(s.start)+(s.end?' · Fin prévue le '+fmt(s.end):'')+(s.ref?' · Référent : '+esc(s.ref):'')+'</p>'+(s.schedule?'<p>Rythme d’accueil : '+esc(s.schedule)+'</p>':'')+(section==='all'?historySection(s,true):'')+sections.map(k=>'<section><h2>'+exportSections[k]+'</h2>'+(parts[k]()||'<p>Aucune saisie enregistrée.</p>')+'</section>').join('');
+ const single=section==='bilans'&&reviews.length===1?reviews[0]:null;
+ const title=draftTitle|| (single?reviewHeading(single.kind):exportSections[section]||'Dossier complet');
+ const details=[
+  ['Élève',s.name],['Classe et groupe',s.classe+' · '+s.group+(s.module?' · Module '+s.module:'')],
+  ['Entrée dans le dispositif',fmt(s.start)],['Fin prévue',s.end?fmt(s.end):''],
+  ['Date du bilan',single?.date?fmt(single.date):''],['Intervenant',single?.adult],
+  ['Référent',s.ref]
+ ];
+ const cover='<div class="report-cover"><p class="report-brand">La Parenthèse</p><h1>'+esc(title)+'</h1>'+
+  (draftTitle?'<p><strong>Saisie non validée</strong></p>':'')+'<dl class="report-meta">'+details.filter(([,value])=>value).map(([label,value])=>'<div><dt>'+label+'</dt><dd>'+esc(value)+'</dd></div>').join('')+'</dl>'+
+  (s.schedule?'<p>Rythme d’accueil · '+esc(s.schedule)+'</p>':'')+'</div>';
+ report.innerHTML=cover+(section==='all'?historySection(s,true):'')+(single?reviewRead(single):
+  sections.map(k=>'<section><h2>'+exportSections[k]+'</h2>'+(parts[k]()||'<p>Aucune saisie enregistrée.</p>')+'</section>').join(''));
  const previousTitle=document.title;
- document.title='La Parenthèse - '+s.name+' - '+(draftTitle||exportSections[section]||'Dossier complet');
+ document.title='La Parenthèse - '+s.name+' - '+title;
  report.removeAttribute('aria-hidden');
  document.body.classList.add('print-dossier');
  window.addEventListener('afterprint',()=>{
