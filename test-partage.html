@@ -154,6 +154,7 @@ function fmt(d){return d?d.split('-').reverse().join('/'):'—'}
 function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 let observationEdit=null;
 let savedMessage='';
+let savedReviewStudentId='';
 async function save(){
  busy=true;
  app.inert=session.inert=true;
@@ -172,6 +173,73 @@ async function save(){
  }catch(e){
   alert(e.message==='401'?'La connexion a expiré. Copiez votre saisie, puis reconnectez-vous.':'Enregistrement partagé impossible. Votre saisie est encore à l’écran.');
   return false;
+ }finally{busy=false;app.inert=session.inert=false}
+}
+function reviewConflict(student,review){
+ const entry=student.reviews.find(r=>r.kind==='Entrée');
+ const exit=student.reviews.find(r=>r.kind==='Sortie');
+ if(review.date<student.start||(review.kind!=='Entrée'&&entry&&review.date<entry.date))
+  return 'La date du bilan doit être égale ou postérieure à la date d’entrée.';
+ if(review.kind==='Entrée')
+  return entry?'Un bilan d’entrée est déjà enregistré pour ce dossier.':'';
+ if(!entry)return 'Le bilan d’entrée doit être enregistré en premier.';
+ if(exit)return 'Un bilan de sortie est déjà enregistré pour ce dossier.';
+ if(review.kind==='Intermédiaire'){
+  const month=review.date.slice(0,7);
+  if(student.group!=='Parcours')return 'Le bilan intermédiaire est réservé au groupe Parcours.';
+  if(student.reviews.some(r=>r.date.slice(0,7)===month))
+   return 'Un bilan d’entrée ou intermédiaire existe déjà pour ce mois.';
+ }
+ if(review.kind==='Sortie'&&student.reviews.some(r=>r.date>review.date))
+  return 'La sortie doit suivre les bilans déjà enregistrés.';
+ return '';
+}
+async function saveReview(original,review,status){
+ const originalDraft=JSON.stringify(original.entryDraft);
+ const sameReview=stored=>Object.keys(review).length===Object.keys(stored).length&&
+  Object.entries(review).every(([key,value])=>stored[key]===value);
+ const read=async()=>{
+  const rows=await api(dossiersPath+'&select=version,payload',token);
+  const row=rows[0];
+  if(!row||!validBackup(row.payload))throw Error('Dossier partagé inaccessible.');
+  return row;
+ };
+ busy=true;
+ app.inert=session.inert=true;
+ status.textContent='Enregistrement du bilan en cours…';
+ try{
+  let latest=await read();
+  for(let attempt=0;attempt<2;attempt++){
+   const student=latest.payload.students.find(s=>s.id===original.id);
+   if(!student)throw Error('Ce dossier a été supprimé de l’espace partagé.');
+   if(student.reviews.some(sameReview))break;
+   const conflict=reviewConflict(student,review);
+   if(conflict)throw Error(conflict);
+   student.reviews.push(review);
+   if(review.kind==='Entrée'&&JSON.stringify(student.entryDraft)===originalDraft)delete student.entryDraft;
+
+   try{
+    await api(dossiersPath+'&version=eq.'+latest.version+'&select=version',token,{
+     method:'PATCH',headers:{Prefer:'return=representation'},
+     body:JSON.stringify({version:latest.version+1,payload:latest.payload})
+    });
+   }catch(error){
+    if(error.message==='401'||error.message==='403')throw error;
+   }
+   latest=await read();
+  }
+  const saved=latest.payload.students.find(s=>s.id===original.id);
+  if(!saved?.reviews.some(sameReview))throw Error('La sauvegarde n’a pas pu être confirmée. Réessayez.');
+  state=latest.payload;
+  version=latest.version;
+  clearReviewDraft(original,review.kind);
+  savedReviewStudentId=original.id;
+  savedMessage='Bilan enregistré dans le dossier partagé.';
+  render();
+ }catch(error){
+  const detail=/^(401|403)$/.test(error.message)?'Reconnectez-vous dans cet onglet.':/^\d{3}$/.test(error.message)?'Le serveur n’a pas confirmé l’enregistrement. Réessayez.':error.message;
+  status.textContent='Enregistrement non confirmé. '+detail+' Votre saisie reste affichée.';
+  status.scrollIntoView({block:'nearest'});
  }finally{busy=false;app.inert=session.inert=false}
 }
 function opts(a){return a.map(s=>'<option>'+esc(s)+'</option>').join('')}
@@ -259,8 +327,11 @@ if(!s){dashboard();return}
 app.innerHTML=button('← Dossiers','home')+'<section class="profile"><p class="tag">'+esc(s.group)+(s.module?' · Module '+esc(s.module):'')+'</p><h1>'+esc(s.name)+'</h1><p class="muted">'+esc(s.classe)+' · Du '+fmt(s.start)+' au '+fmt(s.end)+'</p>'+'<div class="actions">'+button('Télécharger le dossier (PDF)','pdf:all',true)+button('Supprimer le dossier','deleteStudent')+'</div>'+'</section><nav>'+[['observations','Observations'],['semaine','Synthèse de semaine'],['bilans','Bilans'],['evolution','Évolution'],['exports','Documents PDF']].map(([k,l])=>'<button type="button" data-action="'+k+'" aria-current="'+(tab===k)+'">'+l+'</button>').join('')+'</nav><div id="panel"></div>';
 ({observations, semaine, bilans, evolution, exports:pdfExports})[tab](s,document.querySelector('#panel'));
 if(savedMessage){
- document.querySelector('#panel').insertAdjacentHTML('afterbegin','<p class="notice" role="status">'+esc(savedMessage)+'</p>');
+ const pdf=tab==='bilans'&&savedReviewStudentId===s.id
+  ?'<div class="actions">'+button('Télécharger le dossier en PDF','pdf:all',true)+'</div>':'';
+ document.querySelector('#panel').insertAdjacentHTML('afterbegin','<div class="notice"><p role="status">'+esc(savedMessage)+'</p>'+pdf+'</div>');
  savedMessage='';
+ savedReviewStudentId='';
 }
 }
 function dashboard(){
@@ -527,12 +598,7 @@ form('entryForm',async v=>{
   message.textContent='Renseignez au moins un élément du bilan avant de valider.';
   return;
  }
- const previous=s.entryDraft;
- delete s.entryDraft;
- s.reviews.push({...v,kind:'Entrée',adult});
- message.textContent='Enregistrement du bilan en cours…';
- if(await save()){clearReviewDraft(s,'Entrée');render()}
- else{ s.reviews.pop(); s.entryDraft=previous; message.textContent='Bilan non enregistré. La saisie est encore affichée.'; }
+ await saveReview(s,{...v,kind:'Entrée',adult},message);
 });
 draw();
 target.scrollIntoView();
@@ -547,7 +613,15 @@ target.innerHTML='<form class="card" id="reviewForm"><h2>Bilan · '+esc(kind)+'<
 target.scrollIntoView();
 const reviewMessage=document.querySelector('#reviewMessage');
 const rememberReview=bindReviewDraft(document.getElementById('reviewForm'),s,kind,{},null,reviewMessage);
-form('reviewForm',async v=>{if(busy)return;rememberReview();if(v.date<s.start||(entry&&v.date<entry.date)){alert('La date doit être postérieure ou égale à la date d’entrée.');return}if(kind==='Intermédiaire'&&(v.date.slice(0,7)===entry.date.slice(0,7)||s.reviews.some(r=>r.kind===kind&&r.date.slice(0,7)===v.date.slice(0,7)))){alert('Un bilan d’entrée ou intermédiaire existe déjà pour ce mois.');return}if(closingNow&&s.reviews.some(r=>r.date>v.date)){alert('La sortie doit suivre les bilans déjà enregistrés.');return}if(!Object.entries(v).some(([k,x])=>k!=='date'&&x.trim())){alert('Renseignez au moins une réponse ou un objectif.');return}s.reviews.push({...v,kind,adult});reviewMessage.textContent='Enregistrement du bilan en cours…';if(await save()){clearReviewDraft(s,kind);render()}else{s.reviews.pop();reviewMessage.textContent='Bilan non enregistré. La saisie est encore affichée.'}});
+form('reviewForm',async v=>{
+ if(busy)return;
+ rememberReview();
+ if(!Object.entries(v).some(([field,value])=>field!=='date'&&value.trim())){
+  reviewMessage.textContent='Renseignez au moins une réponse ou un objectif.';
+  return;
+ }
+ await saveReview(s,{...v,kind,adult},reviewMessage);
+});
 }
 const exportSections={bilans:'Bilans enregistrés',observations:'Observations enregistrées',semaines:'Synthèses hebdomadaires'};
 function pdfExports(s,p){
