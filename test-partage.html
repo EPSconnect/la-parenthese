@@ -530,6 +530,31 @@ const firstActionExamples=[
  'Choisir un rôle dans le prochain travail de groupe',
  'Préparer ensemble le matériel pour la prochaine séance'
 ];
+async function checkpointEntry(student,draft,expectedDraft){
+ const rows=await api(dossiersPath+'&select=version,payload',token);
+ const row=rows[0];
+ if(!row||!validBackup(row.payload))throw Error('Dossier inaccessible.');
+ const current=row.payload.students.find(item=>item.id===student.id);
+ if(!current||current.reviews.some(review=>review.kind==='Entrée'))
+  throw Error('Le dossier a changé. Votre saisie reste dans cet onglet.');
+ if(JSON.stringify(current.entryDraft)!==JSON.stringify(expectedDraft))
+  throw Error('Un brouillon a été modifié dans un autre onglet. Votre saisie reste dans cet onglet.');
+ current.entryDraft=draft;
+ const updated=await api(dossiersPath+'&version=eq.'+row.version+'&select=version',token,{
+  method:'PATCH',headers:{Prefer:'return=representation'},
+  body:JSON.stringify({version:row.version+1,payload:row.payload})
+ });
+ if(updated.length!==1)throw Error('Le dossier a changé pendant l’enregistrement.');
+ // Keep the active form's student object, while synchronizing all other data.
+ Object.assign(student,current);
+ row.payload.students[row.payload.students.indexOf(current)]=student;
+ state=row.payload;
+ version=updated[0].version;
+}
+function printReviewDraft(student,values,kind){
+ const review={...values,kind,adult};
+ printDossier({...student,reviews:[review]},'bilans','Brouillon du bilan');
+}
 function entryForm(s,target){
 const existing=s.entryDraft||{};
 const objectiveExamples=['Demander une pause avant de quitter l’activité','Tenir un rôle pendant un atelier collectif','Commencer une tâche avec une consigne écrite','Poser une question sur un métier pendant une visite'];
@@ -558,12 +583,30 @@ function draw(){
  f.querySelectorAll('[data-entry-step]').forEach((section,i)=>section.hidden=i!==step);
  f.querySelector('#entryProgress').textContent='Étape '+(step+1)+' sur '+stages.length;
  f.querySelector('progress').value=step+1;
- actions.innerHTML=(step>0?'<button type="button" data-step="-1">Précédent</button>':'')+'<button type="button" data-draft>Enregistrer le brouillon</button>'+(step<3?'<button type="button" class="primary" data-step="1">Continuer</button>':'<button class="primary">Valider le bilan d’entrée</button>');
+ actions.innerHTML=(step>0?'<button type="button" data-step="-1">Précédent</button>':'')+'<button type="button" data-draft>Enregistrer le brouillon</button><button type="button" data-draft-pdf>Exporter le brouillon en PDF</button>'+(step<3?'<button type="button" class="primary" data-step="1">Continuer</button>':'<button class="primary">Valider le bilan d’entrée</button>');
 }
 function values(){return Object.fromEntries(new FormData(f))}
+async function saveCheckpoint(){
+ const draft={...values(),step};
+ const expectedDraft=s.entryDraft;
+ remember();
+ busy=true;
+ app.inert=session.inert=true;
+ message.textContent='Sauvegarde du brouillon en cours…';
+ try{
+  await checkpointEntry(s,draft,expectedDraft);
+  message.textContent='Brouillon enregistré dans le dossier partagé.';
+ }catch{
+  message.textContent='Brouillon partagé non confirmé. Gardez cet onglet ouvert ou exportez le brouillon en PDF.';
+ }finally{busy=false;app.inert=session.inert=false}
+}
 actions.onclick=async e=>{
  const b=e.target.closest('button');
- if(!b)return;
+ if(!b||busy)return;
+ if(b.hasAttribute('data-draft-pdf')){
+  printReviewDraft(s,values(),'Entrée');
+  return;
+ }
  if(b.hasAttribute('data-edit-entry-date')){
   step=0;
   draw();
@@ -573,18 +616,17 @@ actions.onclick=async e=>{
   return;
  }
  if(b.hasAttribute('data-draft')){
-  remember();
-  const previous=s.entryDraft;
-  s.entryDraft={...values(),step};
-  if(await save()){message.textContent='Brouillon enregistré dans le dossier partagé.';savedMessage='';}
-  else s.entryDraft=previous;
+  await saveCheckpoint();
+  return;
  }
  if(b.dataset.step){
-  step+=Number(b.dataset.step);
-  message.textContent='';
+  const direction=Number(b.dataset.step);
+  step+=direction;
   draw();
   remember();
   target.scrollIntoView();
+  if(direction>0)await saveCheckpoint();
+  else message.textContent='';
  }
 };
 f.noValidate=true;
@@ -622,8 +664,9 @@ if(kind==='Entrée'){if(!entry)entryForm(s,document.querySelector('#review'));re
 const closingNow=kind==='Sortie';
 const objectives=domains.map((d,i)=>'<div class="card"><b>'+d+'</b>'+(entry?.['goal'+i]?'<p>'+esc(entry['goal'+i])+'</p>'+(entry['means'+i]?'<small>Aide prévue · '+esc(entry['means'+i])+'</small>':'')+(entry['evidence'+i]?'<small>Signe de réussite prévu · '+esc(entry['evidence'+i])+'</small>':'')+select('status'+i,'État de l’objectif',['Atteint','Partiellement atteint','À poursuivre','Non évalué']):'<p class="muted">Aucun objectif fixé à l’entrée dans ce domaine.</p>')+area('team'+i,reviewLabels['team'+i])+(closingNow?area('voice'+i,reviewLabels['voice'+i]):'')+'</div>').join('');
 const target=document.querySelector('#review');
-target.innerHTML='<form class="card" id="reviewForm"><h2>Bilan · '+esc(kind)+'</h2>'+input('date','Date','date',today(),true)+'<h2>Auto-évaluation du jeune</h2><p>C’est ton ressenti. Il n’y a pas de bonne ou de mauvaise réponse.</p>'+groups(young,'y',youthDomains,3,ys)+scale('mood','Je me sens',['Bien','Moyen','Pas très bien'])+scale('energy','Mon énergie',['Haute','Moyenne','Basse'])+openYoung.map((l,i)=>area('text'+i,l)).join('')+(closingNow?area('gain',reviewLabels.gain):'')+'<h2>Évaluation de l’équipe</h2>'+groups(pro,'p',domains,7,ps)+'<h2>Objectifs et accompagnement</h2>'+objectives+(closingNow?select('action',reviewLabels.action,closing)+input('meeting',reviewLabels.meeting,'date')+area('support',reviewLabels.support):'')+'<p id="reviewMessage" role="status"></p><button class="primary">Enregistrer le bilan</button></form>';
+target.innerHTML='<form class="card" id="reviewForm"><h2>Bilan · '+esc(kind)+'</h2>'+input('date','Date','date',today(),true)+'<h2>Auto-évaluation du jeune</h2><p>C’est ton ressenti. Il n’y a pas de bonne ou de mauvaise réponse.</p>'+groups(young,'y',youthDomains,3,ys)+scale('mood','Je me sens',['Bien','Moyen','Pas très bien'])+scale('energy','Mon énergie',['Haute','Moyenne','Basse'])+openYoung.map((l,i)=>area('text'+i,l)).join('')+(closingNow?area('gain',reviewLabels.gain):'')+'<h2>Évaluation de l’équipe</h2>'+groups(pro,'p',domains,7,ps)+'<h2>Objectifs et accompagnement</h2>'+objectives+(closingNow?select('action',reviewLabels.action,closing)+input('meeting',reviewLabels.meeting,'date')+area('support',reviewLabels.support):'')+'<p id="reviewMessage" role="status"></p><button type="button" id="reviewDraftPdf">Exporter le brouillon en PDF</button><button class="primary">Enregistrer le bilan</button></form>';
 target.scrollIntoView();
+document.querySelector('#reviewDraftPdf').onclick=()=>printReviewDraft(s,Object.fromEntries(new FormData(document.getElementById('reviewForm'))),kind);
 const reviewMessage=document.querySelector('#reviewMessage');
 const rememberReview=bindReviewDraft(document.getElementById('reviewForm'),s,kind,{},null,reviewMessage);
 form('reviewForm',async v=>{
@@ -641,7 +684,7 @@ function pdfExports(s,p){
  const counts={bilans:s.reviews.length,observations:s.obs.length,semaines:Object.keys(s.weeks).length};
  p.innerHTML='<section class="card"><h2>Documents PDF</h2><p>Choisissez le dossier complet ou une rubrique. Dans la fenêtre d’impression, choisissez « Enregistrer au format PDF » ou « PDF → Enregistrer au format PDF ».</p>'+button('Dossier complet en PDF','pdf:all',true)+'</section><div class="grid">'+Object.entries(exportSections).map(([k,label])=>'<section class="card"><h2>'+label+'</h2><p>'+counts[k]+' enregistré(s)</p>'+button('PDF · '+label,'pdf:'+k)+'</section>').join('')+'</div>';
 }
-function printDossier(s,section){
+function printDossier(s,section,draftTitle=''){
  const reviews=[...s.reviews].sort((a,b)=>a.date.localeCompare(b.date));
  const weeks=Object.entries(s.weeks).sort(([a],[b])=>a.localeCompare(b));
  const parts={
@@ -651,9 +694,9 @@ function printDossier(s,section){
  };
  const sections=section==='all'?Object.keys(exportSections):[section];
  const report=document.querySelector('#pdfReport');
- report.innerHTML='<h1>La Parenthèse</h1><h2>'+esc(s.name)+'</h2><p>'+esc(s.classe)+' · '+esc(s.group)+(s.module?' · Module '+esc(s.module):'')+'</p><p>Entrée le '+fmt(s.start)+(s.end?' · Fin prévue le '+fmt(s.end):'')+(s.ref?' · Référent : '+esc(s.ref):'')+'</p>'+(s.schedule?'<p>Rythme d’accueil : '+esc(s.schedule)+'</p>':'')+(section==='all'?historySection(s,true):'')+sections.map(k=>'<section><h2>'+exportSections[k]+'</h2>'+(parts[k]()||'<p>Aucune saisie enregistrée.</p>')+'</section>').join('');
+ report.innerHTML='<h1>La Parenthèse</h1>'+(draftTitle?'<p><strong>'+esc(draftTitle)+' · Saisie non validée</strong></p>':'')+'<h2>'+esc(s.name)+'</h2><p>'+esc(s.classe)+' · '+esc(s.group)+(s.module?' · Module '+esc(s.module):'')+'</p><p>Entrée le '+fmt(s.start)+(s.end?' · Fin prévue le '+fmt(s.end):'')+(s.ref?' · Référent : '+esc(s.ref):'')+'</p>'+(s.schedule?'<p>Rythme d’accueil : '+esc(s.schedule)+'</p>':'')+(section==='all'?historySection(s,true):'')+sections.map(k=>'<section><h2>'+exportSections[k]+'</h2>'+(parts[k]()||'<p>Aucune saisie enregistrée.</p>')+'</section>').join('');
  const previousTitle=document.title;
- document.title='La Parenthèse - '+s.name+' - '+(exportSections[section]||'Dossier complet');
+ document.title='La Parenthèse - '+s.name+' - '+(draftTitle||exportSections[section]||'Dossier complet');
  report.removeAttribute('aria-hidden');
  document.body.classList.add('print-dossier');
  window.addEventListener('afterprint',()=>{
